@@ -1,0 +1,27 @@
+---
+import { Astro } from 'astro';
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Videos</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="container">
+      <h1>Videos (fetched from external API)</h1>
+      <table id="videos-table">
+        <thead>
+          <tr><th>ID</th><th>Title</th><th>Thumbnail</th><th>Action</th></tr>
+        </thead>
+        <tbody id="videos-tbody">
+          <tr><td colspan="4">Loading...</td></tr>
+        </tbody>
+      </table>
+    </main>
+
+    <script type="module" src="/js/view-transitions.js"></script>
+  </body>
+</html>

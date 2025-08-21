@@ -1,0 +1,31 @@
+---
+import { Astro } from 'astro';
+const { params } = Astro;
+const id = params.id;
+// We'll fetch a single item from jsonplaceholder for demo
+const res = await fetch(`https://jsonplaceholder.typicode.com/photos/${id}`);
+const item = await res.json();
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Player - {item.title}</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="container">
+      <h1 id="player-title">{item.title}</h1>
+      <div class="player-card" id="player-card">
+        <!-- usamos la url de la imagen como sustituto del video para demo -->
+        <video id="video-player" controls width="720">
+          <source src="{item.url}" type="video/mp4" />
+          Your browser doesn't support the video element.
+        </video>
+      </div>
+      <p><a href="/videos" data-vt="true">Back to list</a></p>
+    </main>
+    <script type="module" src="/js/view-transitions.js"></script>
+  </body>
+</html>
