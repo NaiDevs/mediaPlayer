@@ -1,0 +1,211 @@
+---
+import videos from '../../data/videos';
+import Layout from '../../layouts/Layout.astro';
+
+export function getStaticPaths() {
+  return videos.map((v) => ({
+    params: { id: String(v.id) },
+    props: { video: v },
+  }));
+}
+
+const { id } = Astro.params;
+const { video: videoFromProps } = Astro.props;
+const video = videoFromProps ?? videos.find((v) => v.id === Number(id));
+if (!video) throw new Error(`Video no encontrado con id: ${id}`);
+---
+
+<Layout>
+  <div class="max-w-4xl mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-4">{video.titulo}</h1>
+
+    <!-- Contenedor 16:9 -->
+    <div class="relative aspect-video rounded-xl overflow-hidden bg-black">
+      <!-- Video S3 sin controles nativos -->
+      <video
+        id="player"
+        src={video.url}
+        class="absolute inset-0 w-full h-full cursor-pointer"
+        preload="metadata"
+        playsinline
+        crossorigin="anonymous"
+        controlslist="nodownload noplaybackrate"
+        disablepictureinpicture
+      ></video>
+
+      <!-- Controles personalizados -->
+      <div class="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white">
+        <!-- Timeline custom estilo YouTube -->
+        <div id="timelineWrap" class="group relative h-3 cursor-pointer select-none">
+          <!-- pista -->
+          <div class="absolute inset-0 rounded-full bg-white/20"></div>
+          <!-- buffer -->
+          <div id="bufferBar" class="absolute inset-y-0 left-0 rounded-full bg-white/30 w-0"></div>
+          <!-- progreso -->
+          <div id="progressBar" class="absolute inset-y-0 left-0 rounded-full bg-white w-0"></div>
+          <!-- hover preview -->
+          <div id="hoverBar" class="absolute inset-y-0 left-0 rounded-full bg-white/40 w-0 pointer-events-none opacity-0 group-hover:opacity-100"></div>
+          <!-- thumb -->
+          <div id="thumb" class="absolute -top-1 h-5 w-5 -translate-x-1/2 rounded-full bg-white shadow pointer-events-none opacity-0 group-hover:opacity-100" style="left: 0;"></div>
+          <!-- tooltip tiempo -->
+          <div id="timeTooltip" class="absolute -top-8 -translate-x-1/2 rounded bg-black/80 px-2 py-0.5 text-xs pointer-events-none opacity-0 group-hover:opacity-100" style="left: 0;">0:00</div>
+        </div>
+
+        <div class="mt-2 flex items-center justify-between text-sm">
+          <div class="flex items-center gap-2">
+            <button id="back10" class="rounded-lg bg-white/10 px-2 py-1 hover:bg-white/20">⏪ 10s</button>
+            <button id="playPause" class="rounded-lg bg-white/10 px-3 py-1 hover:bg-white/20 font-semibold">▶️</button>
+            <button id="fwd10" class="rounded-lg bg-white/10 px-2 py-1 hover:bg-white/20">⏩ 10s</button>
+          </div>
+          <div class="tabular-nums">
+            <span id="timeNow">0:00</span> / <span id="timeTotal">0:00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-4 text-lg text-gray-700">Canal: {video.canal}</p>
+    <p class="text-sm text-gray-500">Duración: {video.duracion}</p>
+    <p class="text-sm text-gray-500">Fecha: {video.fecha}</p>
+  </div>
+
+  <!-- Lógica del reproductor para HTML5 video -->
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+
+    const video = $('player');
+    const wrap = $('timelineWrap');
+    const bar = $('progressBar');
+    const bufferBar = $('bufferBar');
+    const hoverBar = $('hoverBar');
+    const thumb = $('thumb');
+    const tip = $('timeTooltip');
+
+    const elPlay = $('playPause');
+    const elBack = $('back10');
+    const elFwd = $('fwd10');
+    const elNow = $('timeNow');
+    const elTotal = $('timeTotal');
+
+    const fmt = (s) => {
+      s = Math.max(0, Math.floor(s));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return m + ':' + String(r).padStart(2, '0');
+    };
+
+    let duration = 0;
+    let isScrubbing = false;
+
+    // Toggle play/pausa al tocar el video
+    video.addEventListener('click', () => {
+      if (video.paused) video.play();
+      else video.pause();
+    });
+
+    // Sync botón
+    elPlay.addEventListener('click', () => (video.paused ? video.play() : video.pause()));
+    video.addEventListener('play', () => (elPlay.textContent = '⏸️'));
+    video.addEventListener('pause', () => (elPlay.textContent = '▶️'));
+
+    // Metadata -> duración
+    video.addEventListener('loadedmetadata', () => {
+      duration = video.duration || 0;
+      elTotal.textContent = fmt(duration);
+    });
+
+    // Buffer (para S3 necesitas CORS que exponga Accept-Ranges/Content-Range)
+    video.addEventListener('progress', () => {
+      if (!duration) duration = video.duration || 0;
+      if (!duration) return;
+      try {
+        let end = 0;
+        if (video.buffered.length) {
+          end = video.buffered.end(video.buffered.length - 1);
+        }
+        const pct = Math.min(1, end / duration);
+        bufferBar.style.width = (pct * 100) + '%';
+      } catch {}
+    });
+
+    // Progreso
+    video.addEventListener('timeupdate', () => {
+      const cur = video.currentTime || 0;
+      elNow.textContent = fmt(cur);
+      if (duration > 0 && !isScrubbing) {
+        const pct = cur / duration;
+        bar.style.width = (pct * 100) + '%';
+        thumb.style.left = (pct * 100) + '%';
+      }
+    });
+
+    // Helpers timeline
+    const getPctFromEvent = (e) => {
+      const rect = wrap.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      return Math.max(0, Math.min(1, x / rect.width));
+    };
+
+    const updateHover = (pct) => {
+      hoverBar.style.width = (pct * 100) + '%';
+      tip.style.left = (pct * 100) + '%';
+      tip.textContent = fmt(duration * pct);
+    };
+
+    const seekToPct = (pct) => {
+      if (!duration) return;
+      video.currentTime = duration * pct;
+    };
+
+    // Hover preview + click seek
+    const onMove = (e) => {
+      const pct = getPctFromEvent(e);
+      updateHover(pct);
+      if (isScrubbing) {
+        seekToPct(pct);
+      }
+    };
+
+    wrap.addEventListener('mousemove', onMove);
+    wrap.addEventListener('touchmove', (e) => { onMove(e); }, { passive: true });
+
+    wrap.addEventListener('mousedown', (e) => {
+      isScrubbing = true;
+      onMove(e);
+      document.addEventListener('mouseup', onUp);
+      document.addEventListener('mousemove', onMove);
+    });
+    wrap.addEventListener('touchstart', (e) => {
+      isScrubbing = true;
+      onMove(e);
+      document.addEventListener('touchend', onUp, { once: true });
+    });
+
+    wrap.addEventListener('click', (e) => {
+      const pct = getPctFromEvent(e);
+      seekToPct(pct);
+    });
+
+    function onUp() {
+      isScrubbing = false;
+      document.removeEventListener('mousemove', onMove);
+    }
+
+    // ±10s
+    const STEP = 10;
+    elBack.addEventListener('click', () => (video.currentTime = Math.max(0, (video.currentTime || 0) - STEP)));
+    elFwd.addEventListener('click', () => {
+      const dur = video.duration || 0;
+      video.currentTime = Math.min(dur, (video.currentTime || 0) + STEP);
+    });
+
+    // Teclas: espacio y flechas
+    window.addEventListener('keydown', (e) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.code === 'Space') { e.preventDefault(); video.paused ? video.play() : video.pause(); }
+      if (e.code === 'ArrowLeft') { e.preventDefault(); elBack.click(); }
+      if (e.code === 'ArrowRight') { e.preventDefault(); elFwd.click(); }
+    });
+  </script>
+</Layout>

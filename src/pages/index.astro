@@ -1,61 +1,55 @@
 ---
-// Generamos una lista de videos de ejemplo (las rutas apuntan a `public/videos` y `public/thumbnails`)
-const videos = Array.from({ length: 23 }).map((_, i) => ({
-	id: i + 1,
-	title: `Sample video ${i + 1}`,
-	src: `/videos/sample_${(i % 5) + 1}.mp4`,
-	thumbnail: `/thumbnails/thumb_${(i % 5) + 1}.jpg`
-}));
+import videos from '../data/videos';
+import Layout from '../layouts/Layout.astro';
+
+// Helper function to format date
+function formatDate(fechaISO: string): string {
+  const opciones: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+  return new Date(fechaISO).toLocaleDateString('es-ES', opciones);
+}
 ---
 
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Video Player</title>
-		<link rel="stylesheet" href="/styles.css">
-	</head>
-	<body>
-		<main class="container">
-			<h1>Video Player</h1>
+<Layout>
+  <h1 class="mb-6 text-4xl font-extrabold text-gray-800">Video Player</h1>
 
-			<section class="layout">
-				<aside class="sidebar">
-					<h2>Videos</h2>
-					<ul id="video-list">
-						{videos.map(video => (
-							<li class="video-item" data-id={video.id} data-src={video.src} tabindex="0">
-								<img src={video.thumbnail} alt={video.title} class="thumb" />
-								<div class="meta">
-									<strong>{video.title}</strong>
-								</div>
-							</li>
-						))}
-					</ul>
+  <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    {videos.map((video) => (
+      <a
+        href={`/videos/${video.id}`}
+        class="group block rounded-2xl bg-neutral-50 shadow-md overflow-hidden hover:shadow-xl transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        aria-label={`Ver detalles del video: ${video.titulo}`}
+      >
+        <!-- Imagen con overlay -->
+        <div class="relative">
+          <img
+            src={video.imagen}
+            alt={video.titulo}
+            class="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            loading="lazy"
+            decoding="async"
+          />
+          <!-- Footer sobre la imagen -->
+          <div class="absolute inset-x-0 bottom-0 flex items-center justify-between px-3 py-2 bg-gradient-to-t from-black/70 to-transparent text-white text-sm">
+            <span class="font-medium bg-blue-800 text-amber-50 px-2 rounded-lg">
+              {video.canal}
+            </span>
+            <span class="bg-black/70 px-2 py-0.5 rounded-md text-xs font-semibold">
+              {video.duracion}
+            </span>
+          </div>
+        </div>
 
-					<nav class="pagination" id="pagination"></nav>
-				</aside>
+        <!-- Contenido -->
+        <div class="p-4 flex flex-col gap-2">
+          <!-- Título -->
+          <h2 class="text-lg font-semibold text-gray-900 line-clamp-2">
+            {video.titulo}
+          </h2>
 
-				<section class="player">
-					<h2 id="player-title">Select a video</h2>
-					<video id="video-player" controls preload="metadata" width="720">
-						<source id="video-source" src="" type="video/mp4" />
-						Your browser does not support the video tag.
-					</video>
-
-					<div class="controls">
-						<button id="play-pause">Play/Pause</button>
-						<button id="mute-toggle">Mute</button>
-						<label>Vol: <input id="volume" type="range" min="0" max="1" step="0.05" value="1"></label>
-						<button id="speed-down">-</button>
-						<span id="speed">1x</span>
-						<button id="speed-up">+</button>
-					</div>
-				</section>
-			</section>
-		</main>
-
-		<script type="module" src="/js/app.js"></script>
-	</body>
-</html>
+          <!-- Fecha -->
+          <p class="text-sm text-gray-500">{formatDate(video.fecha)}</p>
+        </div>
+      </a>
+    ))}
+  </div>
+</Layout>
