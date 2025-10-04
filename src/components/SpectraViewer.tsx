@@ -10,6 +10,13 @@ type SvelteComponentConstructor = new (options: { target: Element; props?: Recor
 type SvelteComponentInstance = { $destroy?: () => void; destroy?: () => void }
 type PlayerInstance = SvelteComponentInstance & ReplayerMinimal
 
+// Un tipo flexible para instancias de replayer que pueden exponer la API en diferentes propiedades
+type LooseInst = Record<string, unknown> & {
+  __innerReplayer?: ReplayerMinimal
+  replayer?: ReplayerMinimal
+  player?: ReplayerMinimal
+}
+
 type SpectraViewerProps = {
   sessionId: string
 }
@@ -100,7 +107,18 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
           return ev as SpectraEvent
         })
 
-    setEvents(parsed)
+        // calcular totalTime a partir de timestamps en los eventos y guardarlo en metadata
+        try {
+          const timestamps = parsed.map((e) => Number(e.timestamp ?? 0)).filter((t) => t > 0)
+          if (timestamps.length) {
+            const min = Math.min(...timestamps)
+            const max = Math.max(...timestamps)
+            const total = Math.max(0, max - min)
+            setMetadata((prev) => ({ ...(prev || {}), totalTime: total }))
+          }
+        } catch {}
+
+        setEvents(parsed)
       } catch (err) {
         setError('No se pudo cargar la sesión')
         console.error(err)
@@ -136,6 +154,18 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
           props: { events, autoPlay: false, showController: false, skipInactive: false }
         }) as PlayerInstance
 
+        // try to detect an inner/native replayer object that rrweb-player may expose
+        try {
+          // algunos wrappers colocan la instancia real en propiedades internas; buscar un objeto con getCurrentTime
+          const anyInst = instance as unknown as LooseInst
+          const inner = Object.values(anyInst).find((v) => v && typeof (v as unknown as { getCurrentTime?: unknown })?.getCurrentTime === 'function') as unknown as ReplayerMinimal | undefined
+          if (inner) {
+            anyInst.__innerReplayer = inner
+          }
+        } catch {
+          // ignore
+        }
+
         replayerRef.current = instance
         setPlayerInstance(instance)
       } catch (err) {
@@ -157,6 +187,8 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
       setPlayerInstance(null)
     }
   }, [events])
+
+
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden">
@@ -187,7 +219,72 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
       </div>
 
       <div className="glass-panel px-6 py-4">
-        <PlayerControls player={playerInstance} />
+        <PlayerControls
+          player={playerInstance}
+          controls={{
+            play: (t?: number) => {
+              try {
+                const inst = replayerRef.current as unknown as Record<string, unknown>
+                if (!inst) return
+                if (typeof inst.play === 'function') inst.play(t)
+                else if (typeof inst.$set === 'function' && t === 0) {
+                  // fallback: try to emit play by setting time prop if available
+                  try { inst.$set({ currentTime: t }) } catch {}
+                }
+              } catch {}
+            },
+            pause: () => {
+              try {
+                const inst = replayerRef.current as unknown as Record<string, unknown>
+                if (!inst) return
+                if (typeof inst.pause === 'function') inst.pause()
+              } catch {}
+            },
+            setSpeed: (n: number) => {
+              try {
+                const inst = replayerRef.current as unknown as Record<string, unknown>
+                if (!inst) return
+                if (typeof inst.setSpeed === 'function') inst.setSpeed(n)
+              } catch {}
+            },
+            getCurrentTime: () => {
+              try {
+                const inst = replayerRef.current as unknown as LooseInst | null
+                if (!inst) return 0
+                // probar diferentes caminos donde la API puede vivir
+                if (typeof (inst as unknown as ReplayerMinimal).getCurrentTime === 'function') return (inst as unknown as ReplayerMinimal).getCurrentTime()
+                if (inst.__innerReplayer && typeof inst.__innerReplayer.getCurrentTime === 'function') return inst.__innerReplayer.getCurrentTime()
+                if (inst.replayer && typeof inst.replayer.getCurrentTime === 'function') return inst.replayer.getCurrentTime()
+                if (inst.player && typeof inst.player.getCurrentTime === 'function') return inst.player.getCurrentTime()
+                // como último recurso, buscar en valores
+                const candidate = Object.values(inst).find((v) => v && typeof (v as unknown as Record<string, unknown>)['getCurrentTime'] === 'function') as unknown as ReplayerMinimal | undefined
+                if (candidate) return candidate.getCurrentTime()
+                return 0
+              } catch { return 0 }
+            },
+            getMetaData: () => {
+              try {
+                const inst = replayerRef.current as unknown as LooseInst | null
+                if (!inst) return (metadata ?? {})
+                if (typeof (inst as unknown as ReplayerMinimal).getMetaData === 'function') return (inst as unknown as ReplayerMinimal).getMetaData()
+                if (inst.__innerReplayer && typeof inst.__innerReplayer.getMetaData === 'function') return inst.__innerReplayer.getMetaData()
+                if (inst.replayer && typeof inst.replayer.getMetaData === 'function') return inst.replayer.getMetaData()
+                if (inst.player && typeof inst.player.getMetaData === 'function') return inst.player.getMetaData()
+                // buscar en valores si es necesario
+                const candidate = Object.values(inst).find((v) => v && typeof (v as unknown as Record<string, unknown>)['getMetaData'] === 'function') as unknown as ReplayerMinimal | undefined
+                if (candidate) return candidate.getMetaData()
+                return (metadata ?? {})
+              } catch { return (metadata ?? {}) }
+            },
+            toggleFullscreen: () => {
+              try {
+                const inst = replayerRef.current as unknown as Record<string, unknown>
+                if (!inst) return
+                if (typeof inst.toggleFullscreen === 'function') inst.toggleFullscreen()
+              } catch {}
+            }
+          }}
+        />
       </div>
     </div>
   )
