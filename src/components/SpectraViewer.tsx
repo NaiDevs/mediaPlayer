@@ -91,7 +91,7 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
           return ev as SpectraEvent
         })
 
-        setEvents(parsed)
+    setEvents(parsed)
       } catch (err) {
         setError('No se pudo cargar la sesión')
         console.error(err)
@@ -169,6 +169,8 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
         </div>
 
         <aside className="flex w-full flex-col gap-4 lg:w-96">
+          
+
           <div className="glass-panel flex-1 overflow-hidden p-5">
             <EventTimeline events={events} player={playerInstance} />
           </div>
