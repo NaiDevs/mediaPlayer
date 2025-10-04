@@ -1,27 +1,54 @@
 import Link from 'next/link'
+
 const sessions = [
-  { id: 'sess-1', appId: 'yalo-pos', user: 'juan', startedAt: Date.now() - 60000 },
-  { id: 'sess-2', appId: 'bip-bip', user: 'maria', startedAt: Date.now() - 120000 },
-  { id: 'sess-3', appId: 'patmed', user: 'carlos', startedAt: Date.now() - 300000 }
+  { id: 'spectra-demo-01', appId: 'yalo-pos', user: 'Juan', startedAt: Date.now() - 60000, duration: '12:47', country: 'MX' },
+  { id: 'spectra-demo-02', appId: 'bip-bip', user: 'María', startedAt: Date.now() - 120000, duration: '07:15', country: 'CO' },
+  { id: 'spectra-demo-03', appId: 'patmed', user: 'Carlos', startedAt: Date.now() - 300000, duration: '19:03', country: 'CL' }
 ]
 
 export default function SessionsPage() {
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Sesiones (demo)</h1>
-      <ul className="space-y-3">
-        {sessions.map((s) => (
-          <li key={s.id} className="p-3 border rounded flex justify-between items-center">
-            <div>
-              <div className="font-medium">{s.appId} — {s.user}</div>
-              <div className="text-sm text-gray-500">{new Date(s.startedAt).toLocaleString()}</div>
+    <section className="flex flex-col gap-10 text-white">
+      <header className="card-surface flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+        <div>
+          <p className="text-sm uppercase tracking-[0.4em] text-white/60">Sesiones demo</p>
+          <h1 className="mt-2 text-3xl font-semibold">Explora interacciones reales</h1>
+          <p className="mt-2 max-w-xl text-sm text-white/70">
+            Selecciona una sesión para abrir el reproductor, navegar por eventos, anotar hallazgos y compartir con tu equipo de producto.
+          </p>
+        </div>
+        <Link href="/player/spectra-demo-01" className="pill-button">
+          Abrir última sesión
+        </Link>
+      </header>
+
+      <ul className="grid gap-5 md:grid-cols-2">
+        {sessions.map((session) => (
+          <li key={session.id} className="card-surface flex flex-col gap-4 p-6 transition duration-200 hover:-translate-y-1 hover:shadow-[0_40px_120px_rgba(14,165,233,0.35)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-widest text-white/50">{session.appId}</p>
+                <h2 className="text-xl font-semibold text-white">{session.user}</h2>
+              </div>
+              <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/70">
+                {session.country}
+              </span>
             </div>
-            <div>
-              <Link href={`/player/${s.id}`} className="px-3 py-1 bg-blue-600 text-white rounded">Ver</Link>
+
+            <div className="flex items-center justify-between text-sm text-white/70">
+              <span>{new Date(session.startedAt).toLocaleString()}</span>
+              <span className="font-mono text-white/80">Duración · {session.duration}</span>
             </div>
+
+            <Link
+              href={`/player/${session.id}`}
+              className="pill-button mt-2 justify-center"
+            >
+              Ver sesión
+            </Link>
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   )
 }

@@ -7,12 +7,25 @@ type AnnotationsPanelProps = {
 
 export default function AnnotationsPanel({ annotations }: AnnotationsPanelProps) {
   return (
-    <div className="p-4 border-t">
-      <h4 className="font-medium mb-2">Anotaciones</h4>
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {annotations.length === 0 && <div className="text-sm text-gray-500">Sin anotaciones</div>}
-        {annotations.map((a, i) => (
-          <div key={i} className="text-sm text-gray-700">{String(a)}</div>
+    <div className="flex h-full flex-col gap-4 text-white">
+      <div>
+        <h4 className="text-lg font-semibold">Anotaciones</h4>
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Insights del equipo</p>
+      </div>
+
+      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+        {annotations.length === 0 && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-white/60">
+            Sin anotaciones todavía. Captura un insight clave y compártelo con tu squad.
+          </div>
+        )}
+        {annotations.map((annotation, index) => (
+          <article
+            key={index}
+            className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white/80"
+          >
+            {String(annotation)}
+          </article>
         ))}
       </div>
     </div>
