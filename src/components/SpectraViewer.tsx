@@ -4,7 +4,6 @@ import 'rrweb-player/dist/style.css'
 import pako from 'pako'
 import PlayerControls from './PlayerControls'
 import EventTimeline from './EventTimeline'
-import AnnotationsPanel from './AnnotationsPanel'
 import { SpectraEvent, ReplayerMinimal } from '../types/spectra'
 
 type SvelteComponentConstructor = new (options: { target: Element; props?: Record<string, unknown> }) => SvelteComponentInstance
@@ -150,9 +149,9 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
   }, [events])
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-scroll">
+    <div className="flex h-full flex-col gap-6 overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 lg:flex-row">
-        <div className="relative max-h-[600px] overflow-scroll rounded-3xl border border-white/10 bg-black/30 shadow-[0_30px_80px_rgba(14,116,144,0.4)]">
+        <div className="relative max-h-[480px] overflow-hidden rounded-3xl border border-white/10 bg-black/30 shadow-[0_30px_80px_rgba(14,116,144,0.4)]">
           <div ref={containerRef} id="player-container" />
 
           {loading && (
@@ -168,7 +167,7 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
           )}
         </div>
 
-        <aside className="flex w-full flex-col gap-4 lg:w-96 max-h-[600px]">
+        <aside className="flex w-full flex-col gap-4 lg:w-96 max-h-[480px]">
           
 
           <div className="glass-panel flex-1 overflow-hidden p-5">

@@ -14,7 +14,7 @@ export default function PlayerPage() {
         <h1 className="text-3xl font-semibold text-white">Sesión #{id}</h1>
       </header>
 
-      <div className="card-surface h-[640px] w-full overflow-hidden p-4 sm:p-6">
+      <div className="card-surface h-[680px] w-full overflow-hidden p-4 sm:p-6">
         <SpectraViewer sessionId={id} />
       </div>
     </section>
