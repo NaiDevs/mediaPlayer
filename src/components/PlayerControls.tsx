@@ -67,14 +67,23 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
         const meta = p?.getMetaData?.() ?? ({} as SpectraMetadata)
         const current = p?.getCurrentTime?.() ?? 0
         const total = typeof meta.totalTime === 'number' ? meta.totalTime : 0
-        setCurrentTime(current)
+        // si la API no reporta progreso (current === 0) pero el usuario está en modo "play",
+        // incrementar localmente como fallback para que el contador no se quede a 0:00.
+        if ((current === 0 || Number.isNaN(current)) && isPlaying && total > 0) {
+          setCurrentTime((prev) => {
+            const next = Math.min((prev ?? 0) + 200, total)
+            return next
+          })
+        } else {
+          setCurrentTime(current)
+        }
         setTotalTime(total)
       } catch {
       }
     }, 200)
 
     return () => clearInterval(timer)
-  }, [player, controls])
+  }, [player, controls, isPlaying])
 
   const togglePlay = () => {
     try {
