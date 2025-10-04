@@ -8,14 +8,13 @@ export default function PlayerPage() {
   const id = Array.isArray(rawId) ? rawId[0] : rawId
 
   return (
-    <section className="flex h-full flex-col gap-6 text-white">
+    <section className="flex h-full flex-col gap-4 text-white">
       <header className="flex flex-col gap-2">
         <span className="text-sm uppercase tracking-[0.4em] text-white/50">Reproduciendo</span>
         <h1 className="text-3xl font-semibold text-white">Sesión #{id}</h1>
-        <p className="text-sm text-white/70">Explora el timeline, ajusta la velocidad y comparte tus hallazgos con tu equipo.</p>
       </header>
 
-      <div className="card-surface h-[680px] w-full overflow-hidden p-4 sm:p-6">
+      <div className="card-surface h-[640px] w-full overflow-hidden p-4 sm:p-6">
         <SpectraViewer sessionId={id} />
       </div>
     </section>
