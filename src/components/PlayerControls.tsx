@@ -1,5 +1,5 @@
 "use client"
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { SpectraMetadata } from '../types/spectra'
 
 type PlayerType = {
@@ -29,6 +29,7 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
   
   const [currentTime, setCurrentTime] = useState<number>(0)
   const [totalTime, setTotalTime] = useState<number>(0)
+  const lastReportedRef = useRef<number | null>(null)
 
   // Determina startTime desde metadata (si existe) para interpretar timestamps absolutos del JSON
   const meta = (controls ?? player)?.getMetaData?.() ?? ({} as SpectraMetadata)
@@ -65,18 +66,32 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
       try {
         const p = controls ?? player
         const meta = p?.getMetaData?.() ?? ({} as SpectraMetadata)
-        const current = p?.getCurrentTime?.() ?? 0
         const total = typeof meta.totalTime === 'number' ? meta.totalTime : 0
-        // si la API no reporta progreso (current === 0) pero el usuario está en modo "play",
-        // incrementar localmente como fallback para que el contador no se quede a 0:00.
-        if ((current === 0 || Number.isNaN(current)) && isPlaying && total > 0) {
-          setCurrentTime((prev) => {
-            const next = Math.min((prev ?? 0) + 200, total)
-            return next
-          })
+        const reported = p?.getCurrentTime?.()
+
+        // Si la API devuelve un tiempo válido (>0), usarlo y guardarlo como último tiempo real.
+        if (typeof reported === 'number' && !Number.isNaN(reported) && reported > 0) {
+          lastReportedRef.current = reported
+          setCurrentTime(reported)
         } else {
-          setCurrentTime(current)
+          // Si la API no reporta progreso:
+          if (isPlaying && total > 0) {
+            // fallback para que el contador avance mientras reproducimos
+            setCurrentTime((prev) => {
+              const next = Math.min((prev ?? 0) + 200, total)
+              return next
+            })
+          } else {
+            // Si estamos pausados, mantener el último tiempo real conocido (si existe)
+            if (lastReportedRef.current && lastReportedRef.current > 0) {
+              setCurrentTime(lastReportedRef.current)
+            } else {
+              // sin reportes ni último conocido, mantener 0
+              setCurrentTime(0)
+            }
+          }
         }
+
         setTotalTime(total)
       } catch {
       }
@@ -89,9 +104,28 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
     try {
       const p = controls ?? player
       if (!p) return
-      if (isPlaying) p.pause?.()
-      else p.play?.()
-      setIsPlaying(!isPlaying)
+      if (isPlaying) {
+        // estamos pausando: capturar el tiempo actual y mantenerlo en la UI
+        try {
+          const reported = p.getCurrentTime?.()
+          if (typeof reported === 'number' && !Number.isNaN(reported) && reported > 0) {
+            lastReportedRef.current = reported
+            setCurrentTime(reported)
+          } else {
+            // si la API no reporta, usar el tiempo mostrado en la UI como referencia
+            lastReportedRef.current = currentTime ?? lastReportedRef.current
+            if (typeof lastReportedRef.current === 'number') setCurrentTime(lastReportedRef.current)
+          }
+        } catch {
+          lastReportedRef.current = currentTime ?? lastReportedRef.current
+          if (typeof lastReportedRef.current === 'number') setCurrentTime(lastReportedRef.current)
+        }
+        p.pause?.()
+        setIsPlaying(false)
+      } else {
+        p.play?.()
+        setIsPlaying(true)
+      }
     } catch {}
   }
 
@@ -114,6 +148,9 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
       let target = Number(current ?? 0) + deltaMs
       if (target < 0) target = 0
       if (total > 0 && target > total) target = total
+      // actualizar último tiempo conocido para mantener la UI consistente
+      lastReportedRef.current = target
+      setCurrentTime(target)
       p.play?.(target)
     } catch {}
   }
@@ -133,7 +170,11 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
             value={Math.min(Math.max(0, currentTime), Math.max(1, totalTime))}
             onChange={(e) => {
               const val = Number(e.target.value)
-              try { (controls ?? player)?.play?.(val) } catch {}
+              try {
+                lastReportedRef.current = val
+                setCurrentTime(val);
+                (controls ?? player)?.play?.(val)
+              } catch {}
             }}
             className="range-slider"
             title={`${formatTime(currentTime)} / ${formatTime(totalTime)}`}
