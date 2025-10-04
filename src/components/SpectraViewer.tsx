@@ -159,8 +159,8 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
   }, [events])
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-hidden">
-      <div className="flex flex-1 flex-col gap-6 lg:flex-row">
+    <div className="flex h-full flex-col gap-4 overflow-hidden">
+      <div className="flex flex-1 flex-col gap-4 lg:flex-row">
         <div className="relative max-h-[480px] overflow-hidden rounded-3xl border border-white/10 bg-black/30 shadow-[0_30px_80px_rgba(14,116,144,0.4)]">
           <div ref={containerRef} id="player-container" />
 

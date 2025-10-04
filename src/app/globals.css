@@ -155,3 +155,7 @@ input.range-slider::-webkit-slider-thumb:hover {
     background: linear-gradient(180deg, rgba(59, 130, 246, 0.6), rgba(45, 212, 191, 0.6));
   }
 }
+
+.rr-player__frame {
+  width: 720px !important;
+}
