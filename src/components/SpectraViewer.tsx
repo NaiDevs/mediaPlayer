@@ -4,7 +4,7 @@ import 'rrweb-player/dist/style.css'
 import pako from 'pako'
 import PlayerControls from './PlayerControls'
 import EventTimeline from './EventTimeline'
-import { SpectraEvent, ReplayerMinimal } from '../types/spectra'
+import { SpectraEvent, ReplayerMinimal, SpectraMetadata } from '../types/spectra'
 
 type SvelteComponentConstructor = new (options: { target: Element; props?: Record<string, unknown> }) => SvelteComponentInstance
 type SvelteComponentInstance = { $destroy?: () => void; destroy?: () => void }
@@ -19,6 +19,7 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
   const replayerRef = useRef<PlayerInstance | null>(null)
   const [playerInstance, setPlayerInstance] = useState<PlayerInstance | null>(null)
   const [events, setEvents] = useState<SpectraEvent[]>([])
+  const [metadata, setMetadata] = useState<SpectraMetadata | undefined>(undefined)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,6 +48,15 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
         const rawEvents = maybe && Array.isArray((maybe as { events?: unknown[] }).events)
           ? ((maybe as { events?: unknown[] }).events as unknown[])
           : []
+
+        // extraer metadata si está presente en el objeto
+        try {
+          const md = maybe && (maybe as { metadata?: unknown }).metadata
+          if (md && typeof md === 'object') setMetadata(md as SpectraMetadata)
+          else setMetadata(undefined)
+        } catch {
+          setMetadata(undefined)
+        }
 
         function decodeToUint8(str: string) {
           const arr = new Uint8Array(str.length)
@@ -171,7 +181,7 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
           
 
           <div className="glass-panel flex-1 overflow-hidden p-5">
-            <EventTimeline events={events} player={playerInstance} />
+            <EventTimeline events={events} player={playerInstance} metadata={metadata} />
           </div>
         </aside>
       </div>

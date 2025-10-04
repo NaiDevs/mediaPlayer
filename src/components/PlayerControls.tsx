@@ -1,8 +1,9 @@
 "use client"
 import React, { useEffect, useState } from 'react'
+import { SpectraMetadata } from '../types/spectra'
 
 type PlayerType = {
-  getMetaData: () => { totalTime: number }
+  getMetaData: () => SpectraMetadata
   getCurrentTime: () => number
   play: (time?: number) => void
   pause: () => void
@@ -42,9 +43,10 @@ export default function PlayerControls({ player }: PlayerControlsProps) {
       try {
         const meta = player.getMetaData()
         const current = player.getCurrentTime()
-        setProgress((current / Math.max(meta.totalTime, 1)) * 100)
+        const total = typeof meta.totalTime === 'number' ? meta.totalTime : 0
+        setProgress(total > 0 ? (current / total) * 100 : 0)
         setCurrentTime(current)
-        setTotalTime(meta.totalTime)
+        setTotalTime(total)
       } catch {
       }
     }, 200)
@@ -78,7 +80,8 @@ export default function PlayerControls({ player }: PlayerControlsProps) {
     try {
       const p = player as PlayerType
       const meta = p.getMetaData()
-      const time = (percentage / 100) * meta.totalTime
+      const total = typeof meta.totalTime === 'number' ? meta.totalTime : 0
+      const time = total > 0 ? (percentage / 100) * total : 0
       p.play(time)
     } catch {
     }

@@ -1,16 +1,19 @@
 "use client"
 import React, { useMemo, useState } from 'react'
 import EventCard from './EventCard'
-import { SpectraEvent, ReplayerMinimal } from '../types/spectra'
+import { SpectraEvent, ReplayerMinimal, SpectraMetadata } from '../types/spectra'
 
 type EventTimelineProps = {
   events: SpectraEvent[]
   player: ReplayerMinimal | null
+  metadata?: SpectraMetadata
 }
 
-export default function EventTimeline({ events, player }: EventTimelineProps) {
+export default function EventTimeline({ events, player, metadata }: EventTimelineProps) {
   const [filter, setFilter] = useState<string>('all')
   const [search, setSearch] = useState<string>('')
+  console.log('Metadata in Timeline:', metadata?.customEvents)
+  console.log('Metadata in Timeline:', metadata?.errors)
 
   const filters = [
     { value: 'all', label: 'Todos' },
@@ -19,6 +22,8 @@ export default function EventTimeline({ events, player }: EventTimelineProps) {
     { value: 'error', label: 'Errores' },
     { value: 'navigation', label: 'Navegación' }
   ]
+
+  const eventsCustom = metadata?.customEvents || []
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
@@ -76,7 +81,7 @@ export default function EventTimeline({ events, player }: EventTimelineProps) {
           </div>
         )}
         {filteredEvents.map((event, index) => (
-          <EventCard key={`${event.timestamp}-${index}`} event={event} onClick={() => jumpToEvent(event)} />
+          <EventCard key={`${event.timestamp}-${index}`} event={eventsCustom[index]} onClick={() => jumpToEvent(event)} />
         ))}
       </div>
     </div>
