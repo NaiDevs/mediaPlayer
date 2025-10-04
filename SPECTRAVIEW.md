@@ -417,7 +417,7 @@ const SpectraViewer = ({ sessionId }) => {
     // Inicializar player
     const replayer = new Replayer(unpacked, {
       root: document.getElementById('player-container'),
-      skipInactive: true,
+      skipInactive: false,
       showWarning: false,
       showDebug: false,
       blockClass: 'spectra-block',

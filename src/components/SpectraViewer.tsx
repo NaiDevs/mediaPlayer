@@ -124,7 +124,7 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
         // rrweb-player es un componente Svelte: instanciar con new Player({ target, props })
         const instance = new playerCtorCandidate({
           target: containerRef.current as Element,
-          props: { events, autoPlay: false, showController: true, skipInactive: false }
+          props: { events, autoPlay: false, showController: false, skipInactive: false }
         }) as PlayerInstance
 
         replayerRef.current = instance
@@ -150,10 +150,10 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
   }, [events])
 
   return (
-    <div className="flex h-full flex-col gap-6">
+    <div className="flex h-full flex-col gap-6 overflow-scroll">
       <div className="flex flex-1 flex-col gap-6 lg:flex-row">
-        <div className="relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/30 shadow-[0_30px_80px_rgba(14,116,144,0.4)]">
-          <div ref={containerRef} id="player-container" className="h-full w-full" />
+        <div className="relative max-h-[600px] overflow-scroll rounded-3xl border border-white/10 bg-black/30 shadow-[0_30px_80px_rgba(14,116,144,0.4)]">
+          <div ref={containerRef} id="player-container" />
 
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">
@@ -168,15 +168,11 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
           )}
         </div>
 
-        <aside className="flex w-full flex-col gap-4 lg:w-96">
+        <aside className="flex w-full flex-col gap-4 lg:w-96 max-h-[600px]">
           
 
           <div className="glass-panel flex-1 overflow-hidden p-5">
             <EventTimeline events={events} player={playerInstance} />
-          </div>
-
-          <div className="glass-panel p-5">
-            <AnnotationsPanel annotations={[]} />
           </div>
         </aside>
       </div>
