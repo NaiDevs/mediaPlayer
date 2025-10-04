@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Image from 'next/image'
+import Link from 'next/link'
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,7 +29,21 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <div className="min-h-screen flex flex-col">
+          <header className="bg-white border-b p-4">
+            <div className="max-w-6xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Image src="/next.svg" alt="logo" width={120} height={26} />
+                <nav className="flex gap-3">
+                  <Link href="/login" className="text-sm text-gray-700">Login</Link>
+                  <Link href="/sessions" className="text-sm text-gray-700">Sesiones</Link>
+                </nav>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1">{children}</main>
+        </div>
       </body>
     </html>
   );
