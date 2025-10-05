@@ -16,23 +16,23 @@ export default function AppShell({ children }: Props) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,107,53,0.12),_transparent_55%)]" />
       <div className="relative z-10 flex min-h-screen flex-row gap-6 px-4 py-6 sm:px-6">
         {!hideSidebar && (
-          <aside className="card-surface flex h-full w-72 flex-col gap-6 rounded-2xl px-4 py-4 overflow-y-auto sticky top-6">
+          <aside className="card-surface flex h-screen w-72 flex-col gap-6 rounded-2xl px-4 py-6 overflow-y-auto sticky top-0">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-lg font-semibold text-foreground">Media Session Player</h1>
+                <h1 className="text-lg font-semibold text-foreground">Session Player</h1>
               </div>
             </div>
 
             <nav className="flex flex-col gap-3 text-sm font-medium h-full">
-              <Link href="/" className="pill-button">Inicio</Link>
               <Link href="/sessions" className="pill-button">Sesiones</Link>
-              <Link href="/player/1" className="pill-button">Reproductor</Link>
+              <Link href="/apps" className="pill-button">Aplicaciones</Link>
+              <Link href="/apps" className="pill-button">Usuarios</Link>
             </nav>
 
           </aside>
         )}
 
-        <main className={`flex-1 mt-6 p-6 rounded-2xl overflow-auto ${hideSidebar ? 'mx-auto w-full max-w-4xl' : ''}`}>
+        <main className={`flex-1 rounded-2xl overflow-auto ${hideSidebar ? 'mx-auto w-full max-w-4xl' : ''}`}>
           {children}
         </main>
       </div>
