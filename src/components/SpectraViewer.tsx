@@ -21,6 +21,8 @@ type SpectraViewerProps = {
   sessionId: string
 }
 
+
+
 export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const replayerRef = useRef<PlayerInstance | null>(null)
@@ -224,27 +226,66 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
           controls={{
             play: (t?: number) => {
               try {
-                const inst = replayerRef.current as unknown as Record<string, unknown>
+                const inst = replayerRef.current as unknown as LooseInst | null
                 if (!inst) return
-                if (typeof inst.play === 'function') inst.play(t)
-                else if (typeof inst.$set === 'function' && t === 0) {
-                  // fallback: try to emit play by setting time prop if available
-                  try { inst.$set({ currentTime: t }) } catch {}
+                const topPlay = (inst as Record<string, unknown>)['play']
+                if (typeof topPlay === 'function') { try { (topPlay as (...a: unknown[]) => unknown)(t); return } catch {} }
+                if (inst.__innerReplayer) {
+                  const ip = (inst.__innerReplayer as Record<string, unknown>)['play']
+                  if (typeof ip === 'function') { try { (ip as (...a: unknown[]) => unknown)(t); return } catch {} }
                 }
+                if (inst.replayer) {
+                  const rp = (inst.replayer as Record<string, unknown>)['play']
+                  if (typeof rp === 'function') { try { (rp as (...a: unknown[]) => unknown)(t); return } catch {} }
+                }
+                if (inst.player) {
+                  const pp = (inst.player as Record<string, unknown>)['play']
+                  if (typeof pp === 'function') { try { (pp as (...a: unknown[]) => unknown)(t); return } catch {} }
+                }
+                try {
+                  const setFn = (inst as Record<string, unknown>)['$set']
+                  if (typeof setFn === 'function') (setFn as (...a: unknown[]) => unknown)({ currentTime: t })
+                } catch {}
               } catch {}
             },
             pause: () => {
               try {
-                const inst = replayerRef.current as unknown as Record<string, unknown>
+                const inst = replayerRef.current as unknown as LooseInst | null
                 if (!inst) return
-                if (typeof inst.pause === 'function') inst.pause()
+                const topPause = (inst as Record<string, unknown>)['pause']
+                if (typeof topPause === 'function') { try { (topPause as (...a: unknown[]) => unknown)(); return } catch {} }
+                if (inst.__innerReplayer) {
+                  const ip = (inst.__innerReplayer as Record<string, unknown>)['pause']
+                  if (typeof ip === 'function') { try { (ip as (...a: unknown[]) => unknown)(); return } catch {} }
+                }
+                if (inst.replayer) {
+                  const rp = (inst.replayer as Record<string, unknown>)['pause']
+                  if (typeof rp === 'function') { try { (rp as (...a: unknown[]) => unknown)(); return } catch {} }
+                }
+                if (inst.player) {
+                  const pp = (inst.player as Record<string, unknown>)['pause']
+                  if (typeof pp === 'function') { try { (pp as (...a: unknown[]) => unknown)(); return } catch {} }
+                }
               } catch {}
             },
             setSpeed: (n: number) => {
               try {
-                const inst = replayerRef.current as unknown as Record<string, unknown>
+                const inst = replayerRef.current as unknown as LooseInst | null
                 if (!inst) return
-                if (typeof inst.setSpeed === 'function') inst.setSpeed(n)
+                const topSet = (inst as Record<string, unknown>)['setSpeed']
+                if (typeof topSet === 'function') { try { (topSet as (...a: unknown[]) => unknown)(n); return } catch {} }
+                if (inst.__innerReplayer) {
+                  const ip = (inst.__innerReplayer as Record<string, unknown>)['setSpeed']
+                  if (typeof ip === 'function') { try { (ip as (...a: unknown[]) => unknown)(n); return } catch {} }
+                }
+                if (inst.replayer) {
+                  const rp = (inst.replayer as Record<string, unknown>)['setSpeed']
+                  if (typeof rp === 'function') { try { (rp as (...a: unknown[]) => unknown)(n); return } catch {} }
+                }
+                if (inst.player) {
+                  const pp = (inst.player as Record<string, unknown>)['setSpeed']
+                  if (typeof pp === 'function') { try { (pp as (...a: unknown[]) => unknown)(n); return } catch {} }
+                }
               } catch {}
             },
             getCurrentTime: () => {
