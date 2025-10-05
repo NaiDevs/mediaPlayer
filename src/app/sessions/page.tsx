@@ -9,7 +9,7 @@ const sessions = [
 export default function SessionsPage() {
   return (
     <section className="flex flex-col gap-10 ">
-        <div className='py-2'>
+        <div>
           <p className="text-sm uppercase tracking-[0.4em]">Sesiones</p>
           <h1 className="mt-2 text-3xl font-semibold">Explora interacciones reales</h1>
         </div>

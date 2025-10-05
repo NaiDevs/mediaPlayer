@@ -1,42 +1,69 @@
 "use client"
 import React, { useMemo, useState } from 'react'
 import EventCard from './EventCard'
-import { SpectraEvent, ReplayerMinimal, SpectraMetadata } from '../types/spectra'
+import { ReplayerMinimal, SpectraMetadata } from '../types/spectra'
 
 type EventTimelineProps = {
-  events: SpectraEvent[]
   player: ReplayerMinimal | null
   metadata?: SpectraMetadata
 }
 
-export default function EventTimeline({ events, player, metadata }: EventTimelineProps) {
+export default function EventTimeline({ player, metadata }: EventTimelineProps) {
   const [filter, setFilter] = useState<string>('all')
   const [search, setSearch] = useState<string>('')
-  console.log('Metadata in Timeline:', metadata?.customEvents)
-  console.log('Metadata in Timeline:', metadata?.errors)
+  
 
   const filters = [
     { value: 'all', label: 'Todos' },
     { value: 'click', label: 'Clicks' },
-    { value: 'input', label: 'Inputs' },
-    { value: 'error', label: 'Errores' },
-    { value: 'navigation', label: 'Navegación' }
+    // { value: 'input', label: 'Inputs' },
+    { value: 'network', label: 'Network' },
+    { value: 'console', label: 'Console' },
+    { value: 'navigation', label: 'Navegación' },
+    { value: 'error', label: 'Errores' }
   ]
 
-  const eventsCustom = metadata?.customEvents || []
-
+  // Usar exclusivamente customEvents y errors desde metadata para la timeline
   const filteredEvents = useMemo(() => {
-    return events.filter((event) => {
-      if (filter !== 'all' && event.type !== filter) return false
+    const custom = (metadata?.customEvents || []).map((c) => ({
+      ...c,
+      type: 'custom' as const,
+      timestamp: c.timestamp ?? 0,
+    }))
+
+    // metadata.errors puede no existir o tener un formato distinto; normalizarlo si existe
+    const errorsRaw = Array.isArray((metadata as unknown as { errors?: unknown[] })?.errors)
+      ? (metadata as unknown as { errors?: unknown[] }).errors!
+      : []
+    const errors = (errorsRaw as unknown[]).map((e, i) => {
+      const obj = e as Record<string, unknown>
+      const msg = typeof obj?.message === 'string' ? obj.message : JSON.stringify(obj)
+      const ts = typeof obj?.timestamp === 'number' ? (obj.timestamp as number) : (custom[i]?.timestamp ?? 0)
+      // Marcar estos errores como "mis errores" incluyendo sessionId y context.userId
+      return {
+        type: 'custom' as const,
+        eventType: 'error',
+        data: { message: msg, myError: true },
+        timestamp: ts,
+        sessionId: metadata?.sessionId,
+        context: { userId: (metadata as SpectraMetadata | undefined)?.userId }
+      }
+    })
+
+    const all = [...custom, ...errors]
+    all.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
+
+    return all.filter((event) => {
+      if (filter !== 'all' && (event.eventType ?? '') !== filter) return false
       if (search && !JSON.stringify(event).toLowerCase().includes(search.toLowerCase())) return false
       return true
     })
-  }, [events, filter, search])
+  }, [metadata, filter, search])
 
-  const jumpToEvent = (event: SpectraEvent) => {
+  const jumpToEvent = (event: { timestamp?: number }) => {
     try {
       player?.pause?.()
-      player?.play?.(event.timestamp)
+      if (typeof event.timestamp === 'number') player?.play?.(event.timestamp)
     } catch {
     }
   }
@@ -45,7 +72,7 @@ export default function EventTimeline({ events, player, metadata }: EventTimelin
     <div className="flex h-full flex-col gap-4 ">
       <div>
         <h3 className="text-lg font-semibold">Timeline</h3>
-        <p className="text-xs uppercase tracking-[0.35em] /50">Eventos destacados</p>
+        <p className="text-xs uppercase tracking-[0.35em] text-muted">Eventos</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -55,8 +82,8 @@ export default function EventTimeline({ events, player, metadata }: EventTimelin
             onClick={() => setFilter(item.value)}
             className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
               filter === item.value
-                ? 'bg-sky-400/90  shadow-lg shadow-sky-400/40'
-                : 'border border-white/20 bg-white/10 /70 hover:border-white/40 hover:'
+                ? 'bg-[var(--accent-1)]/90 shadow-lg shadow-[rgba(255,107,53,0.24)] text-white'
+                : 'border border-[rgba(255,174,120,0.14)] bg-[rgba(255,243,236,0.6)] text-muted hover:border-[rgba(255,174,120,0.22)]'
             }`}
           >
             {item.label}
@@ -70,18 +97,18 @@ export default function EventTimeline({ events, player, metadata }: EventTimelin
           placeholder="Buscar evento, selector o payload…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm  placeholder:/40 focus:border-sky-400 focus:outline-none"
+          className="w-full rounded-2xl border border-[rgba(255,174,120,0.14)] bg-[rgba(255,243,236,0.6)] px-4 py-3 text-sm placeholder:text-muted focus:border-[var(--accent-1)] focus:outline-none"
         />
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">
         {filteredEvents.length === 0 && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-6 text-center text-sm /60">
+          <div className="rounded-2xl border border-[rgba(255,174,120,0.12)] bg-[rgba(255,240,230,0.04)] px-3 py-6 text-center text-sm text-muted">
             Sin eventos que coincidan con tu filtro.
           </div>
         )}
         {filteredEvents.map((event, index) => (
-          <EventCard key={`${event.timestamp}-${index}`} event={eventsCustom[index]} onClick={() => jumpToEvent(event)} />
+          <EventCard key={`${event.timestamp}-${index}`} event={event} onClick={() => jumpToEvent(event)} />
         ))}
       </div>
     </div>

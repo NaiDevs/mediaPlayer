@@ -32,7 +32,7 @@ export default function AppShell({ children }: Props) {
           </aside>
         )}
 
-        <main className={`flex-1 rounded-2xl overflow-auto ${hideSidebar ? 'mx-auto w-full max-w-4xl' : ''}`}>
+        <main className={`flex-1 py-2 rounded-2xl overflow-auto ${hideSidebar ? 'mx-auto w-full max-w-4xl' : ''}`}>
           {children}
         </main>
       </div>
