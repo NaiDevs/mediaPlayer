@@ -97,6 +97,17 @@
   margin: 0 auto;
 }
 
+.app-input {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  color: var(--foreground);
+  outline: none;
+}
+.app-input::placeholder { color: rgba(27,15,10,0.45); }
+.app-input:focus { box-shadow: 0 0 0 4px rgba(255,184,107,0.12); }
+
 input.range-slider {
   -webkit-appearance: none;
   appearance: none;

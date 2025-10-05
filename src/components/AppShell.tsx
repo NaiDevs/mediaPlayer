@@ -27,7 +27,7 @@ export default function AppShell({ children }: Props) {
             <nav className="flex flex-col gap-3 text-sm font-medium h-full">
               <Link href="/sessions" className="pill-button">Sesiones</Link>
               <Link href="/apps" className="pill-button">Aplicaciones</Link>
-              <Link href="/apps" className="pill-button">Usuarios</Link>
+              <Link href="/users" className="pill-button">Usuarios</Link>
             </nav>
 
           </aside>
