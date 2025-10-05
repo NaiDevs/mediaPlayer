@@ -150,5 +150,8 @@ input.range-slider::-webkit-slider-thumb:hover {
 }
 
 .rr-player__frame {
-  width: 720px !important;
+  width: clamp(480px, 100%, 100%) !important;
+  max-width: 100%;
+  box-sizing: border-box;
 }
+

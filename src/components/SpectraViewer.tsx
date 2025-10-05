@@ -215,7 +215,7 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
           
 
           <div className="glass-panel flex-1 overflow-hidden p-5">
-            <EventTimeline events={events} player={playerInstance} metadata={metadata} />
+            <EventTimeline player={playerInstance} metadata={metadata} />
           </div>
         </aside>
       </div>
