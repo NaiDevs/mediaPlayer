@@ -11,15 +11,12 @@ export default function SessionsPage() {
     <section className="flex flex-col gap-10 ">
       <header className="card-surface flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
         <div>
-          <p className="text-sm uppercase tracking-[0.4em] /60">Sesiones demo</p>
+          <p className="text-sm uppercase tracking-[0.4em]">Sesiones demo</p>
           <h1 className="mt-2 text-3xl font-semibold">Explora interacciones reales</h1>
-          <p className="mt-2 max-w-xl text-sm /70">
-            Selecciona una sesión para abrir el reproductor, navegar por eventos, anotar hallazgos y compartir con tu equipo de producto.
+          <p className="mt-2 max-w-xl text-sm">
+            Selecciona una sesión para abrir el reproductor, navegar por eventos y compartir con tu equipo de producto.
           </p>
         </div>
-        <Link href="/player/spectra-demo-01" className="pill-button">
-          Abrir última sesión
-        </Link>
       </header>
 
       <ul className="grid gap-5 md:grid-cols-2">
