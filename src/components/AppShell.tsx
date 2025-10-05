@@ -9,7 +9,7 @@ type Props = {
 
 export default function AppShell({ children }: Props) {
   const pathname = usePathname() ?? ''
-  const hideSidebar = pathname.startsWith('/login')
+  const hideSidebar = pathname.startsWith('/')
 
   return (
     <div className="relative min-h-screen overflow-x-hidden">
