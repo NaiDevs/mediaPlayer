@@ -142,7 +142,8 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
     try {
       const p = controls ?? player
       if (!p) return
-      const current = p.getCurrentTime?.() ?? 0
+      // Usar el tiempo mostrado en la UI (último reportado o estado) como base para los saltos
+      const current = lastReportedRef.current ?? currentTime ?? 0
       const meta = p.getMetaData?.() ?? { totalTime: 0 }
       const total = typeof meta.totalTime === 'number' ? meta.totalTime : 0
       let target = Number(current ?? 0) + deltaMs
