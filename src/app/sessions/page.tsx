@@ -8,12 +8,12 @@ const sessions = [
 
 export default function SessionsPage() {
   return (
-    <section className="flex flex-col gap-10 text-white">
+    <section className="flex flex-col gap-10 ">
       <header className="card-surface flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between md:p-8">
         <div>
-          <p className="text-sm uppercase tracking-[0.4em] text-white/60">Sesiones demo</p>
+          <p className="text-sm uppercase tracking-[0.4em] /60">Sesiones demo</p>
           <h1 className="mt-2 text-3xl font-semibold">Explora interacciones reales</h1>
-          <p className="mt-2 max-w-xl text-sm text-white/70">
+          <p className="mt-2 max-w-xl text-sm /70">
             Selecciona una sesión para abrir el reproductor, navegar por eventos, anotar hallazgos y compartir con tu equipo de producto.
           </p>
         </div>
@@ -27,17 +27,17 @@ export default function SessionsPage() {
           <li key={session.id} className="card-surface flex flex-col gap-4 p-6 transition duration-200 hover:-translate-y-1 hover:shadow-[0_40px_120px_rgba(14,165,233,0.35)]">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm uppercase tracking-widest text-white/50">{session.appId}</p>
-                <h2 className="text-xl font-semibold text-white">{session.user}</h2>
+                <p className="text-sm uppercase tracking-widest /50">{session.appId}</p>
+                <h2 className="text-xl font-semibold ">{session.user}</h2>
               </div>
-              <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/70">
+              <span className="rounded-full border border-white/20 px-3 py-1 text-xs /70">
                 {session.country}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-sm text-white/70">
+            <div className="flex items-center justify-between text-sm /70">
               <span>{new Date(session.startedAt).toLocaleString()}</span>
-              <span className="font-mono text-white/80">Duración · {session.duration}</span>
+              <span className="font-mono /80">Duración · {session.duration}</span>
             </div>
 
             <Link

@@ -66,7 +66,7 @@ export default function EventCard({ event, onClick }: EventCardProps) {
   return (
     <button
       onClick={onClick}
-      className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br px-4 py-3 text-left text-white transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(59,130,246,0.25)]`}
+      className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br px-4 py-3 text-left  transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(59,130,246,0.25)]`}
     >
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-black/20 text-xl">
@@ -75,10 +75,10 @@ export default function EventCard({ event, onClick }: EventCardProps) {
         <div className="flex-1">
           <div className="flex items-center justify-between text-sm font-semibold uppercase tracking-[0.2em]">
             <span>{getType()}</span>
-            {/* <span className="text-xs font-normal text-white/70">{timestampLabel}</span> */}
+            {/* <span className="text-xs font-normal /70">{timestampLabel}</span> */}
           </div>
           <span>{getText()}</span>
-          {/* {selector && <p className="mt-2 overflow-hidden text-ellipsis text-xs text-white/75">{selector}</p>} */}
+          {/* {selector && <p className="mt-2 overflow-hidden text-ellipsis text-xs /75">{selector}</p>} */}
         </div>
       </div>
     </button>

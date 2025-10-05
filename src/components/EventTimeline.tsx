@@ -42,10 +42,10 @@ export default function EventTimeline({ events, player, metadata }: EventTimelin
   }
 
   return (
-    <div className="flex h-full flex-col gap-4 text-white">
+    <div className="flex h-full flex-col gap-4 ">
       <div>
         <h3 className="text-lg font-semibold">Timeline</h3>
-        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Eventos destacados</p>
+        <p className="text-xs uppercase tracking-[0.35em] /50">Eventos destacados</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -55,8 +55,8 @@ export default function EventTimeline({ events, player, metadata }: EventTimelin
             onClick={() => setFilter(item.value)}
             className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
               filter === item.value
-                ? 'bg-sky-400/90 text-white shadow-lg shadow-sky-400/40'
-                : 'border border-white/20 bg-white/10 text-white/70 hover:border-white/40 hover:text-white'
+                ? 'bg-sky-400/90  shadow-lg shadow-sky-400/40'
+                : 'border border-white/20 bg-white/10 /70 hover:border-white/40 hover:'
             }`}
           >
             {item.label}
@@ -70,13 +70,13 @@ export default function EventTimeline({ events, player, metadata }: EventTimelin
           placeholder="Buscar evento, selector o payload…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-sky-400 focus:outline-none"
+          className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm  placeholder:/40 focus:border-sky-400 focus:outline-none"
         />
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">
         {filteredEvents.length === 0 && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-6 text-center text-sm text-white/60">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-6 text-center text-sm /60">
             Sin eventos que coincidan con tu filtro.
           </div>
         )}

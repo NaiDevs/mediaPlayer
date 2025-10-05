@@ -159,10 +159,10 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
   
 
   return (
-    <div className="flex flex-col gap-3 text-white">
-      <div className="flex items-center gap-4 text-xs uppercase tracking-[0.4em] text-white/50">
+    <div className="flex flex-col gap-3 text-foreground">
+      <div className="flex items-center gap-4 text-xs uppercase tracking-[0.4em] text-muted">
         <span>{formatTime(currentTime)}</span>
-        <div className="flex-1 overflow-hidden rounded-full bg-white/10">
+  <div className="flex-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.10)]">
           <input
             type="range"
             min={0}
@@ -184,7 +184,7 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
         <span>{formatTime(totalTime)}</span>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
+  <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             onClick={(e: React.MouseEvent) => {
@@ -224,20 +224,20 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/70">
+          <div className="flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.05)] px-3 py-1.5 text-xs text-muted">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold">Velocidad</span>
               <div className="relative">
                 <button className="flex items-center gap-2 rounded bg-transparent px-2 py-1 text-sm font-semibold" title={`Velocidad actual: ${speed}x`}>
                   {speed}x
-                  <span className="text-white/70">▾</span>
+                  <span className="text-muted">▾</span>
                 </button>
                 <div className="absolute mt-2 right-0 w-36 rounded bg-black/90 p-2 shadow-lg z-[9999]">
                   {[0.25, 0.5, 0.75, 1, 1.5, 2, 4].map((opt) => (
                     <button
                       key={opt}
                       onClick={() => changeSpeed(opt)}
-                      className={`w-full text-left px-2 py-1 text-sm ${opt === speed ? 'font-bold text-sky-400' : 'text-white/70'}`}
+                      className={`w-full text-left px-2 py-1 text-sm ${opt === speed ? 'font-bold text-sky-400' : 'text-muted'}`}
                       title={`Poner velocidad ${opt}x`}
                     >
                       {opt}x

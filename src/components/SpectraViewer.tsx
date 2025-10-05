@@ -199,8 +199,8 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
           <div ref={containerRef} id="player-container" />
 
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">
-              <span className="animate-pulse text-sm uppercase tracking-[0.5em] text-white/80">Cargando sesión…</span>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 ">
+              <span className="animate-pulse text-sm uppercase tracking-[0.5em] /80">Cargando sesión…</span>
             </div>
           )}
 
