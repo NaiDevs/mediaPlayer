@@ -1,5 +1,6 @@
 "use client"
 import React, { useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import PlayIcon from '@/icons/PlayIcon'
 import PauseIcon from '@/icons/PauseIcon'
 import SkipBackIcon from '@/icons/SkipBackIcon'
@@ -28,9 +29,74 @@ type PlayerControlsProps = {
   }
 }
 
+function SpeedMenu({ anchorRef, onChoose, onClose, current }: { anchorRef: React.RefObject<HTMLElement | null>, onChoose: (n: number) => void, onClose: () => void, current: number }) {
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  // Recompute position on mount, scroll and resize
+  const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+
+  useEffect(() => {
+    function update() {
+      const el = anchorRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const menuW = 144
+      const left = Math.min(Math.max(8, rect.right - menuW), window.innerWidth - menuW - 8)
+      const top = Math.min(rect.bottom, window.innerHeight - 40)
+      setCoords({ top, left })
+    }
+
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as Node | null
+      if (!menuRef.current) return
+      if (anchorRef.current && anchorRef.current.contains(target)) return
+      if (!menuRef.current.contains(target)) onClose()
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [anchorRef, onClose])
+
+  const opts = [0.25, 0.5, 0.75, 1, 1.5, 2]
+
+  const menu = (
+    <div ref={menuRef} style={{ position: 'fixed', top: coords.top, left: coords.left, zIndex: 99999 }}>
+      <div className="w-36 rounded bg-white p-2 shadow-lg">
+        {opts.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => onChoose(opt)}
+            className={`w-full text-left px-2 py-1 text-sm ${opt === current ? 'font-bold text-black' : 'text-black/70'}`}
+          >
+            {opt}x
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  if (typeof document === 'undefined') return null
+  return createPortal(menu, document.body)
+}
+
 export default function PlayerControls({ player, controls }: PlayerControlsProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<number>(1)
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false)
+  const speedButtonRef = useRef<HTMLButtonElement | null>(null)
   
   const [currentTime, setCurrentTime] = useState<number>(0)
   const [totalTime, setTotalTime] = useState<number>(0)
@@ -140,6 +206,7 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
       if (!p) return
       p.setSpeed?.(newSpeed)
       setSpeed(newSpeed)
+      setShowSpeedMenu(false)
     } catch {}
   }
 
@@ -235,22 +302,18 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold">Velocidad</span>
               <div className="relative">
-                <button className="flex items-center gap-2 rounded bg-transparent px-2 py-1 text-sm font-semibold" title={`Velocidad actual: ${speed}x`}>
+                <button
+                  ref={speedButtonRef}
+                  onClick={(e) => { e.preventDefault(); setShowSpeedMenu((s) => !s) }}
+                  className="flex items-center gap-2 rounded bg-transparent px-2 py-1 text-sm font-semibold"
+                  title={`Velocidad actual: ${speed}x`}
+                >
                   {speed}x
                   <span className="text-muted">▾</span>
                 </button>
-                <div className="absolute mt-2 right-0 w-36 rounded bg-black/90 p-2 shadow-lg z-[9999]">
-                  {[0.25, 0.5, 0.75, 1, 1.5, 2, 4].map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => changeSpeed(opt)}
-                      className={`w-full text-left px-2 py-1 text-sm ${opt === speed ? 'font-bold text-sky-400' : 'text-muted'}`}
-                      title={`Poner velocidad ${opt}x`}
-                    >
-                      {opt}x
-                    </button>
-                  ))}
-                </div>
+                {showSpeedMenu && (
+                  <SpeedMenu anchorRef={speedButtonRef} onChoose={changeSpeed} onClose={() => setShowSpeedMenu(false)} current={speed} />
+                )}
               </div>
             </div>
           </div>

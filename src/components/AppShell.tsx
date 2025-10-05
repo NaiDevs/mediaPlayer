@@ -17,7 +17,7 @@ export default function AppShell({ children }: Props) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,107,53,0.12),_transparent_55%)]" />
       <div className="relative z-10 flex min-h-screen flex-row gap-6 px-4 py-6 sm:px-6">
         {!hideSidebar && (
-          <aside className="card-surface flex h-screen w-72 flex-col gap-6 rounded-2xl px-4 py-6 overflow-y-auto sticky top-0">
+          <aside className="card-surface flex w-72 flex-col gap-6 rounded-2xl px-4 py-6 overflow-y-auto sticky top-6 max-h-[calc(100vh-48px)]">
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-lg font-semibold text-foreground">Session Player</h1>
