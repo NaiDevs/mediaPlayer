@@ -9,7 +9,8 @@ type Props = {
 
 export default function AppShell({ children }: Props) {
   const pathname = usePathname() ?? ''
-  const hideSidebar = pathname.startsWith('/')
+  // Ocultar la barra lateral solo en la página raíz '/'
+  const hideSidebar = pathname === '/'
 
   return (
     <div className="relative min-h-screen overflow-x-hidden">
