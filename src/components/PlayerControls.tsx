@@ -1,5 +1,10 @@
 "use client"
 import React, { useEffect, useState, useRef } from 'react'
+import PlayIcon from '@/icons/PlayIcon'
+import PauseIcon from '@/icons/PauseIcon'
+import SkipBackIcon from '@/icons/SkipBackIcon'
+import SkipForwardIcon from '@/icons/SkipForwardIcon'
+import MaximizeIcon from '@/icons/MaximizeIcon'
 import { SpectraMetadata } from '../types/spectra'
 
 type PlayerType = {
@@ -194,18 +199,20 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
                 seekBySeconds(-5000)
               }
             }}
-            className="pill-button !px-3 !py-2"
+            className="pill-button !px-3 !py-2 flex items-center justify-center"
             aria-label="Volver al inicio / Retroceder 5s (Shift/Alt para ir al inicio)"
             title="Click: -5s · Shift/Alt+Click: Ir al inicio"
           >
-            ⏮️
+            <span className="w-5 h-5 text-white flex items-center justify-center"><SkipBackIcon /></span>
           </button>
           <button
             onClick={togglePlay}
-            className="pill-button !px-6 !py-3 text-base"
+            className="pill-button !px-3 !py-3 text-base flex items-center gap-3"
             aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
           >
-            {isPlaying ? '⏸️ Pausa' : '▶️ Reproducir'}
+            <span className="w-5 h-5 text-white flex items-center justify-center">
+              {isPlaying ? <PauseIcon /> : <PlayIcon />}
+            </span>
           </button>
           <button
             onClick={(e: React.MouseEvent) => {
@@ -215,11 +222,11 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
                 seekBySeconds(5000)
               }
             }}
-            className="pill-button !px-3 !py-2"
+            className="pill-button !px-3 !py-2 flex items-center justify-center"
             aria-label="Reanudar / Adelantar 5s (Shift/Alt para reanudar)"
             title="Click: +5s · Shift/Alt+Click: Reanudar"
           >
-            ⏭️
+            <span className="w-5 h-5 text-white flex items-center justify-center"><SkipForwardIcon /></span>
           </button>
         </div>
 
@@ -250,9 +257,9 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
 
           <button
             onClick={() => (controls ?? player)?.toggleFullscreen?.()}
-            className="pill-button !px-4 !py-2"
+            className="pill-button !px-4 !py-2 flex items-center justify-center"
           >
-            🔳
+            <span className="w-5 h-5 text-white flex items-center justify-center"><MaximizeIcon /></span>
           </button>
         </div>
       </div>

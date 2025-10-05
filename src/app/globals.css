@@ -93,6 +93,8 @@
 .pill-button svg {
   width: 1rem;
   height: 1rem;
+  display: block;
+  margin: 0 auto;
 }
 
 input.range-slider {
