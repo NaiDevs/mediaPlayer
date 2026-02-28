@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import AppShell from '../components/AppShell'
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Spectra Player",
-  description: "Observa, analiza y revive cada sesión de tus usuarios con estilo.",
+  title: "SpectraView",
+  description: "Session Recording & Analytics Platform",
 };
 
 export default function RootLayout({
@@ -24,11 +23,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}> 
-        <AppShell>
-          {children}
-        </AppShell>
+    <html lang="es" className="dark">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {children}
       </body>
     </html>
   );
