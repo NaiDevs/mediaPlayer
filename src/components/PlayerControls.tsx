@@ -1,11 +1,8 @@
 "use client"
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import PlayIcon from '@/icons/PlayIcon'
-import PauseIcon from '@/icons/PauseIcon'
-import SkipBackIcon from '@/icons/SkipBackIcon'
-import SkipForwardIcon from '@/icons/SkipForwardIcon'
-import MaximizeIcon from '@/icons/MaximizeIcon'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { SpectraMetadata } from '../types/spectra'
 
 type PlayerType = {
@@ -29,23 +26,27 @@ type PlayerControlsProps = {
   }
 }
 
-function SpeedMenu({ anchorRef, onChoose, onClose, current }: { anchorRef: React.RefObject<HTMLElement | null>, onChoose: (n: number) => void, onClose: () => void, current: number }) {
-  const menuRef = useRef<HTMLDivElement | null>(null)
+const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2]
 
-  // Recompute position on mount, scroll and resize
-  const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+function SpeedMenu({ anchorRef, onChoose, onClose, current }: {
+  anchorRef: React.RefObject<HTMLElement | null>
+  onChoose: (n: number) => void
+  onClose: () => void
+  current: number
+}) {
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  const [coords, setCoords] = useState({ top: 0, left: 0 })
 
   useEffect(() => {
     function update() {
       const el = anchorRef.current
       if (!el) return
       const rect = el.getBoundingClientRect()
-      const menuW = 144
+      const menuW = 128
       const left = Math.min(Math.max(8, rect.right - menuW), window.innerWidth - menuW - 8)
-      const top = Math.min(rect.bottom, window.innerHeight - 40)
+      const top = Math.max(8, rect.top - (SPEED_OPTIONS.length * 32 + 16))
       setCoords({ top, left })
     }
-
     update()
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
@@ -53,12 +54,10 @@ function SpeedMenu({ anchorRef, onChoose, onClose, current }: { anchorRef: React
     function onDocClick(e: MouseEvent) {
       const target = e.target as Node | null
       if (!menuRef.current) return
-      if (anchorRef.current && anchorRef.current.contains(target)) return
+      if (anchorRef.current?.contains(target)) return
       if (!menuRef.current.contains(target)) onClose()
     }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
     document.addEventListener('mousedown', onDocClick)
     document.addEventListener('keydown', onKey)
 
@@ -70,18 +69,22 @@ function SpeedMenu({ anchorRef, onChoose, onClose, current }: { anchorRef: React
     }
   }, [anchorRef, onClose])
 
-  const opts = [0.25, 0.5, 0.75, 1, 1.5, 2]
-
   const menu = (
     <div ref={menuRef} style={{ position: 'fixed', top: coords.top, left: coords.left, zIndex: 99999 }}>
-      <div className="w-36 rounded bg-white p-2 shadow-lg">
-        {opts.map((opt) => (
+      <div className="w-32 rounded-lg border border-border bg-popover p-1 shadow-lg">
+        {SPEED_OPTIONS.map((opt) => (
           <button
             key={opt}
             onClick={() => onChoose(opt)}
-            className={`w-full text-left px-2 py-1 text-sm ${opt === current ? 'font-bold text-black' : 'text-black/70'}`}
+            className={cn(
+              "flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm transition-colors",
+              opt === current
+                ? "bg-primary/10 text-primary font-semibold"
+                : "text-popover-foreground hover:bg-accent"
+            )}
           >
             {opt}x
+            {opt === current && <CheckIcon className="h-3.5 w-3.5" />}
           </button>
         ))}
       </div>
@@ -94,42 +97,37 @@ function SpeedMenu({ anchorRef, onChoose, onClose, current }: { anchorRef: React
 
 export default function PlayerControls({ player, controls }: PlayerControlsProps) {
   const [isPlaying, setIsPlaying] = useState(false)
-  const [speed, setSpeed] = useState<number>(1)
+  const [speed, setSpeed] = useState(1)
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
   const speedButtonRef = useRef<HTMLButtonElement | null>(null)
-  
-  const [currentTime, setCurrentTime] = useState<number>(0)
-  const [totalTime, setTotalTime] = useState<number>(0)
-  const lastReportedRef = useRef<number | null>(null)
 
-  // Determina startTime desde metadata (si existe) para interpretar timestamps absolutos del JSON
+  const [currentTime, setCurrentTime] = useState(0)
+  const [totalTime, setTotalTime] = useState(0)
+  const lastReportedRef = useRef<number | null>(null)
+  const [prevPlayer, setPrevPlayer] = useState(player)
+
+  if (prevPlayer !== player) {
+    setPrevPlayer(player)
+    setIsPlaying(false)
+    setCurrentTime(0)
+    setTotalTime(0)
+  }
+
   const meta = (controls ?? player)?.getMetaData?.() ?? ({} as SpectraMetadata)
   const startTimeFromMeta = typeof meta.startTime === 'number' ? meta.startTime : undefined
 
   const formatTime = (ms: number) => {
     if (!ms || Number.isNaN(ms)) return '00:00'
-
     let elapsed = ms
-    let showSecondsCount: number | null = null
-    if (startTimeFromMeta && ms > 1e11) {
-      elapsed = ms - startTimeFromMeta
-      showSecondsCount = Math.floor(elapsed / 1000)
-    }
-
+    if (startTimeFromMeta && ms > 1e11) elapsed = ms - startTimeFromMeta
     if (elapsed < 0) elapsed = 0
     const totalSeconds = Math.floor(elapsed / 1000)
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = totalSeconds % 60
-    const base = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    if (showSecondsCount !== null) return `${base} (${showSecondsCount}s)`
-    return base
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
   }
 
-  useEffect(() => {
-    setIsPlaying(false)
-    setCurrentTime(0)
-    setTotalTime(0)
-  }, [player])
+  const progress = totalTime > 0 ? Math.min((currentTime / totalTime) * 100, 100) : 0
 
   useEffect(() => {
     if (!player && !controls) return
@@ -140,34 +138,19 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
         const total = typeof meta.totalTime === 'number' ? meta.totalTime : 0
         const reported = p?.getCurrentTime?.()
 
-        // Si la API devuelve un tiempo válido (>0), usarlo y guardarlo como último tiempo real.
         if (typeof reported === 'number' && !Number.isNaN(reported) && reported > 0) {
           lastReportedRef.current = reported
           setCurrentTime(reported)
         } else {
-          // Si la API no reporta progreso:
           if (isPlaying && total > 0) {
-            // fallback para que el contador avance mientras reproducimos
-            setCurrentTime((prev) => {
-              const next = Math.min((prev ?? 0) + 200, total)
-              return next
-            })
-          } else {
-            // Si estamos pausados, mantener el último tiempo real conocido (si existe)
-            if (lastReportedRef.current && lastReportedRef.current > 0) {
-              setCurrentTime(lastReportedRef.current)
-            } else {
-              // sin reportes ni último conocido, mantener 0
-              setCurrentTime(0)
-            }
+            setCurrentTime((prev) => Math.min((prev ?? 0) + 200, total))
+          } else if (lastReportedRef.current && lastReportedRef.current > 0) {
+            setCurrentTime(lastReportedRef.current)
           }
         }
-
         setTotalTime(total)
-      } catch {
-      }
+      } catch {}
     }, 200)
-
     return () => clearInterval(timer)
   }, [player, controls, isPlaying])
 
@@ -176,14 +159,12 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
       const p = controls ?? player
       if (!p) return
       if (isPlaying) {
-        // estamos pausando: capturar el tiempo actual y mantenerlo en la UI
         try {
           const reported = p.getCurrentTime?.()
           if (typeof reported === 'number' && !Number.isNaN(reported) && reported > 0) {
             lastReportedRef.current = reported
             setCurrentTime(reported)
           } else {
-            // si la API no reporta, usar el tiempo mostrado en la UI como referencia
             lastReportedRef.current = currentTime ?? lastReportedRef.current
             if (typeof lastReportedRef.current === 'number') setCurrentTime(lastReportedRef.current)
           }
@@ -214,27 +195,27 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
     try {
       const p = controls ?? player
       if (!p) return
-      // Usar el tiempo mostrado en la UI (último reportado o estado) como base para los saltos
       const current = lastReportedRef.current ?? currentTime ?? 0
       const meta = p.getMetaData?.() ?? { totalTime: 0 }
       const total = typeof meta.totalTime === 'number' ? meta.totalTime : 0
       let target = Number(current ?? 0) + deltaMs
       if (target < 0) target = 0
       if (total > 0 && target > total) target = total
-      // actualizar último tiempo conocido para mantener la UI consistente
       lastReportedRef.current = target
       setCurrentTime(target)
       p.play?.(target)
     } catch {}
   }
 
-  
-
   return (
-    <div className="flex flex-col gap-3 text-foreground">
-      <div className="flex items-center gap-4 text-xs uppercase tracking-[0.4em] text-muted">
-        <span>{formatTime(currentTime)}</span>
-  <div className="flex-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.10)]">
+    <div className="flex flex-col gap-3">
+      {/* Progress bar */}
+      <div className="flex items-center gap-3">
+        <span className="w-12 text-right text-xs font-mono text-muted-foreground tabular-nums">
+          {formatTime(currentTime)}
+        </span>
+
+        <div className="group relative flex-1 h-2 cursor-pointer">
           <input
             type="range"
             min={0}
@@ -249,83 +230,166 @@ export default function PlayerControls({ player, controls }: PlayerControlsProps
                 (controls ?? player)?.play?.(val)
               } catch {}
             }}
-            className="range-slider"
+            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
             title={`${formatTime(currentTime)} / ${formatTime(totalTime)}`}
           />
+          {/* Track */}
+          <div className="absolute inset-0 rounded-full bg-muted/50" />
+          {/* Fill */}
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-[width] duration-100"
+            style={{ width: `${progress}%` }}
+          />
+          {/* Thumb */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-primary shadow-md ring-2 ring-background opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ left: `calc(${progress}% - 7px)` }}
+          />
         </div>
-        <span>{formatTime(totalTime)}</span>
+
+        <span className="w-12 text-xs font-mono text-muted-foreground tabular-nums">
+          {formatTime(totalTime)}
+        </span>
       </div>
 
-  <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={(e: React.MouseEvent) => {
-                if (e.shiftKey || e.altKey) {
+      {/* Controls row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          {/* Skip back */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
+              if (e.shiftKey || e.altKey) {
                 try { (controls ?? player)?.play?.(0) } catch {}
               } else {
                 seekBySeconds(-5000)
               }
             }}
-            className="pill-button !px-3 !py-2 flex items-center justify-center"
-            aria-label="Volver al inicio / Retroceder 5s (Shift/Alt para ir al inicio)"
-            title="Click: -5s · Shift/Alt+Click: Ir al inicio"
+            title="Click: -5s"
           >
-            <span className="w-5 h-5 text-white flex items-center justify-center"><SkipBackIcon /></span>
-          </button>
-          <button
+            <SkipBackIcon className="h-4 w-4" />
+          </Button>
+
+          {/* Play/Pause */}
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={togglePlay}
-            className="pill-button !px-3 !py-3 text-base flex items-center gap-3"
-            aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
+            className="hover:bg-primary/10 hover:text-primary"
           >
-            <span className="w-5 h-5 text-white flex items-center justify-center">
-              {isPlaying ? <PauseIcon /> : <PlayIcon />}
-            </span>
-          </button>
-          <button
-            onClick={(e: React.MouseEvent) => {
+            {isPlaying ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="h-5 w-5" />}
+          </Button>
+
+          {/* Skip forward */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={(e) => {
               if (e.shiftKey || e.altKey) {
                 try { (controls ?? player)?.play?.() } catch {}
               } else {
                 seekBySeconds(5000)
               }
             }}
-            className="pill-button !px-3 !py-2 flex items-center justify-center"
-            aria-label="Reanudar / Adelantar 5s (Shift/Alt para reanudar)"
-            title="Click: +5s · Shift/Alt+Click: Reanudar"
+            title="Click: +5s"
           >
-            <span className="w-5 h-5 text-white flex items-center justify-center"><SkipForwardIcon /></span>
-          </button>
+            <SkipForwardIcon className="h-4 w-4" />
+          </Button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.05)] px-3 py-1.5 text-xs text-muted">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold">Velocidad</span>
-              <div className="relative">
-                <button
-                  ref={speedButtonRef}
-                  onClick={(e) => { e.preventDefault(); setShowSpeedMenu((s) => !s) }}
-                  className="flex items-center gap-2 rounded bg-transparent px-2 py-1 text-sm font-semibold"
-                  title={`Velocidad actual: ${speed}x`}
-                >
-                  {speed}x
-                  <span className="text-muted">▾</span>
-                </button>
-                {showSpeedMenu && (
-                  <SpeedMenu anchorRef={speedButtonRef} onChoose={changeSpeed} onClose={() => setShowSpeedMenu(false)} current={speed} />
-                )}
-              </div>
-            </div>
+        <div className="flex items-center gap-1">
+          {/* Speed */}
+          <div className="relative">
+            <Button
+              ref={speedButtonRef}
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSpeedMenu(s => !s)}
+              className="gap-1 font-mono text-xs"
+            >
+              {speed}x
+              <ChevronUpIcon className="h-3 w-3 text-muted-foreground" />
+            </Button>
+            {showSpeedMenu && (
+              <SpeedMenu
+                anchorRef={speedButtonRef}
+                onChoose={changeSpeed}
+                onClose={() => setShowSpeedMenu(false)}
+                current={speed}
+              />
+            )}
           </div>
 
-          <button
+          {/* Fullscreen */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => (controls ?? player)?.toggleFullscreen?.()}
-            className="pill-button !px-4 !py-2 flex items-center justify-center"
+            title="Pantalla completa"
           >
-            <span className="w-5 h-5 text-white flex items-center justify-center"><MaximizeIcon /></span>
-          </button>
+            <MaximizeIcon className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </div>
+  )
+}
+
+/* ─── Inline Icons ─── */
+
+function PlayIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  )
+}
+
+function PauseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+    </svg>
+  )
+}
+
+function SkipBackIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="19,20 9,12 19,4" /><line x1="5" y1="19" x2="5" y2="5" />
+    </svg>
+  )
+}
+
+function SkipForwardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="5,4 15,12 5,20" /><line x1="19" y1="5" x2="19" y2="19" />
+    </svg>
+  )
+}
+
+function MaximizeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15,3 21,3 21,9" /><polyline points="9,21 3,21 3,15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+    </svg>
+  )
+}
+
+function ChevronUpIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="18,15 12,9 6,15" />
+    </svg>
+  )
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20,6 9,17 4,12" />
+    </svg>
   )
 }
