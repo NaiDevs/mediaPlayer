@@ -25,52 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-
-type AppItem = {
-  id: string
-  name: string
-  appId: string
-  apiKey: string
-  status: 'active' | 'inactive'
-  createdAt: string
-}
-
-const STORAGE_KEY = 'mediaPlayer.apps'
-
-function generateApiKey() {
-  return 'ak_' + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12)
-}
-
-function slugify(input: string) {
-  return input.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-}
-
-function loadAppsFromStorage(): AppItem[] {
-  if (typeof window === 'undefined') return []
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Migrate legacy items missing status/createdAt
-        return parsed.map((a: Record<string, unknown>) => ({
-          ...a,
-          status: a.status ?? 'active',
-          createdAt: a.createdAt ?? new Date().toISOString().split('T')[0],
-        })) as AppItem[]
-      }
-    } catch {
-      return []
-    }
-  }
-  const sample: AppItem[] = [
-    { id: '1', name: 'Dashboard App', appId: 'dashboard', apiKey: generateApiKey(), status: 'active', createdAt: '2025-11-20' },
-    { id: '2', name: 'Analytics Service', appId: 'analytics', apiKey: generateApiKey(), status: 'active', createdAt: '2026-01-05' },
-    { id: '3', name: 'Yalo POS', appId: 'yalo-pos', apiKey: generateApiKey(), status: 'inactive', createdAt: '2026-02-12' },
-  ]
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sample))
-  return sample
-}
+import { listApps, createApp, updateApp, deleteApp, rotateApiKey, AppItem } from '@/lib/apps'
 
 const statusConfig = {
   active: { label: 'Activa', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
@@ -79,12 +34,8 @@ const statusConfig = {
 
 export default function AppsPage() {
   const [apps, setApps] = useState<AppItem[]>([])
-  const hydratedRef = React.useRef(false)
-
-  useEffect(() => {
-    setApps(loadAppsFromStorage())
-    hydratedRef.current = true
-  }, [])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -92,18 +43,29 @@ export default function AppsPage() {
   const [targetApp, setTargetApp] = useState<AppItem | null>(null)
   const [editing, setEditing] = useState<AppItem | null>(null)
 
-  // Form
   const [formName, setFormName] = useState('')
   const [formAppId, setFormAppId] = useState('')
   const [formStatus, setFormStatus] = useState<AppItem['status']>('active')
   const [formError, setFormError] = useState('')
 
-  // Clipboard feedback
   const [copiedField, setCopiedField] = useState<{ id: string; field: 'apiKey' | 'appId' } | null>(null)
 
   useEffect(() => {
-    if (hydratedRef.current) localStorage.setItem(STORAGE_KEY, JSON.stringify(apps))
-  }, [apps])
+    loadApps()
+  }, [])
+
+  async function loadApps() {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await listApps()
+      setApps(response?.apps || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar aplicaciones')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredApps = apps.filter(a =>
     a.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -133,18 +95,7 @@ export default function AppsPage() {
     setDialogOpen(true)
   }
 
-  function makeUniqueAppId(base: string): string {
-    let candidate = base
-    let i = 0
-    while (apps.some(a => a.appId === candidate && a.id !== editing?.id)) {
-      i++
-      candidate = `${base}-${Math.random().toString(36).slice(2, 5)}`
-      if (i > 10) break
-    }
-    return candidate
-  }
-
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setFormError('')
 
@@ -153,32 +104,26 @@ export default function AppsPage() {
       return
     }
 
-    let finalAppId = editing ? editing.appId : formAppId.trim()
-    if (!finalAppId) {
-      finalAppId = makeUniqueAppId(slugify(formName) || `app-${Date.now().toString().slice(-4)}`)
-    }
-
-    const exists = apps.some(a => a.appId === finalAppId && a.id !== editing?.id)
-    if (exists) {
-      setFormError('El App ID ya existe, usa otro nombre')
-      return
-    }
-
-    if (editing) {
-      setApps(prev => prev.map(a => a.id === editing.id ? { ...a, name: formName, status: formStatus } : a))
-    } else {
-      const newApp: AppItem = {
-        id: Date.now().toString(),
-        name: formName,
-        appId: finalAppId,
-        apiKey: generateApiKey(),
-        status: formStatus,
-        createdAt: new Date().toISOString().split('T')[0],
+    try {
+      if (editing) {
+        const updated = await updateApp(editing.appId, {
+          name: formName,
+          status: formStatus,
+        })
+        setApps(prev => prev.map(a => a.appId === editing.appId ? updated : a))
+      } else {
+        const created = await createApp({
+          name: formName,
+          appId: formAppId.trim() || undefined,
+          status: formStatus,
+        })
+        setApps(prev => [created, ...prev])
       }
-      setApps(prev => [newApp, ...prev])
+      setDialogOpen(false)
+      resetForm()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Error al guardar aplicacion')
     }
-    setDialogOpen(false)
-    resetForm()
   }
 
   function confirmDelete(app: AppItem) {
@@ -186,11 +131,16 @@ export default function AppsPage() {
     setDeleteDialogOpen(true)
   }
 
-  function executeDelete() {
+  async function executeDelete() {
     if (!targetApp) return
-    setApps(prev => prev.filter(a => a.id !== targetApp.id))
-    setDeleteDialogOpen(false)
-    setTargetApp(null)
+    try {
+      await deleteApp(targetApp.appId)
+      setApps(prev => prev.filter(a => a.appId !== targetApp.appId))
+      setDeleteDialogOpen(false)
+      setTargetApp(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar aplicacion')
+    }
   }
 
   function confirmRegen(app: AppItem) {
@@ -198,21 +148,51 @@ export default function AppsPage() {
     setRegenDialogOpen(true)
   }
 
-  function executeRegen() {
+  async function executeRegen() {
     if (!targetApp) return
-    setApps(prev => prev.map(a => a.id === targetApp.id ? { ...a, apiKey: generateApiKey() } : a))
-    setRegenDialogOpen(false)
-    setTargetApp(null)
+    try {
+      const result = await rotateApiKey(targetApp.appId)
+      setApps(prev => prev.map(a => a.appId === targetApp.appId ? { ...a, apiKey: result.apiKey } : a))
+      setRegenDialogOpen(false)
+      setTargetApp(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al regenerar API key')
+    }
   }
 
   const copyToClipboard = useCallback(async (app: AppItem, field: 'apiKey' | 'appId') => {
-    const text = field === 'apiKey' ? app.apiKey : app.appId
+    const text = field === 'apiKey' ? (app.apiKey || '') : app.appId
+    if (!text) return
     try {
       await navigator.clipboard.writeText(text)
       setCopiedField({ id: app.id, field })
       setTimeout(() => setCopiedField(null), 2000)
     } catch { /* silent */ }
   }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando aplicaciones...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <Button onClick={loadApps} variant="outline">
+            Reintentar
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -259,7 +239,7 @@ export default function AppsPage() {
                   <Input
                     id="app-id"
                     value={formAppId}
-                    onChange={e => setFormAppId(slugify(e.target.value))}
+                    onChange={e => setFormAppId(e.target.value.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-'))}
                     placeholder="mi-aplicacion"
                     className="font-mono text-sm"
                   />

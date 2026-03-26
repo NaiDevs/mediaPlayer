@@ -5,6 +5,7 @@ import pako from 'pako'
 import PlayerControls from './PlayerControls'
 import EventTimeline from './EventTimeline'
 import { SpectraEvent, ReplayerMinimal, SpectraMetadata } from '../types/spectra'
+import { fetchSessionReplay } from '@/lib/sessions'
 
 type SvelteComponentConstructor = new (options: { target: Element; props?: Record<string, unknown> }) => SvelteComponentInstance
 type SvelteComponentInstance = { $destroy?: () => void; destroy?: () => void }
@@ -63,9 +64,7 @@ export default function SpectraViewer({ sessionId }: SpectraViewerProps) {
         }
 
         if (!data) {
-          const res = await fetch(`/api/sessions/${sessionId}/replay`)
-          if (!res.ok) throw new Error('network')
-          data = await res.json()
+          data = await fetchSessionReplay(sessionId) as Record<string, unknown>
         }
 
         const maybe = data as Record<string, unknown> | null

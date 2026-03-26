@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,49 +26,13 @@ import {
 } from '@/components/ui/table'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
-
-type User = {
-  id: string
-  name: string
-  email: string
-  password?: string
-  role: 'admin' | 'viewer' | 'editor'
-  createdAt: string
-}
-
-const STORAGE_KEY = 'mediaPlayer.users'
+import { listUsers, createUser, updateUser, deleteUser, resetUserPassword, User } from '@/lib/users'
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
   { value: 'viewer', label: 'Viewer' },
   { value: 'editor', label: 'Editor' },
 ] as const
-
-function loadUsersFromStorage(): User[] {
-  if (typeof window === 'undefined') return []
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((u: Record<string, unknown>) => ({
-          ...u,
-          role: u.role ?? 'viewer',
-          createdAt: u.createdAt ?? new Date().toISOString().split('T')[0],
-        })) as User[]
-      }
-    } catch {
-      return []
-    }
-  }
-  const sample: User[] = [
-    { id: 'u1', name: 'Maria Lopez', email: 'maria@spectraview.io', password: 'pass1234', role: 'admin', createdAt: '2025-12-01' },
-    { id: 'u2', name: 'Carlos Ruiz', email: 'carlos@spectraview.io', password: 'secret789', role: 'editor', createdAt: '2026-01-15' },
-    { id: 'u3', name: 'Ana Torres', email: 'ana@spectraview.io', password: 'viewer123', role: 'viewer', createdAt: '2026-02-10' },
-  ]
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sample))
-  return sample
-}
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -97,16 +61,19 @@ const roleBadgeVariant: Record<User['role'], string> = {
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
-  const hydratedRef = React.useRef(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null)
   const [editing, setEditing] = useState<User | null>(null)
-  const [showPasswordId, setShowPasswordId] = useState<string | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [resetPasswordError, setResetPasswordError] = useState('')
+  const [resetPasswordSuccess, setResetPasswordSuccess] = useState(false)
 
-  // Form state
   const [formName, setFormName] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formPassword, setFormPassword] = useState('')
@@ -114,13 +81,21 @@ export default function UsersPage() {
   const [formError, setFormError] = useState('')
 
   useEffect(() => {
-    setUsers(loadUsersFromStorage())
-    hydratedRef.current = true
+    loadUsers()
   }, [])
 
-  useEffect(() => {
-    if (hydratedRef.current) localStorage.setItem(STORAGE_KEY, JSON.stringify(users))
-  }, [users])
+  async function loadUsers() {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await listUsers()
+      setUsers(response?.users || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar usuarios')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredUsers = users.filter(u =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -152,7 +127,7 @@ export default function UsersPage() {
     setDialogOpen(true)
   }
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setFormError('')
 
@@ -169,27 +144,28 @@ export default function UsersPage() {
       return
     }
 
-    if (editing) {
-      setUsers(prev =>
-        prev.map(u =>
-          u.id === editing.id
-            ? { ...u, name: formName, email: formEmail, role: formRole, password: formPassword.trim() || u.password }
-            : u
-        )
-      )
-    } else {
-      const newUser: User = {
-        id: Date.now().toString(),
-        name: formName,
-        email: formEmail,
-        password: formPassword.trim(),
-        role: formRole,
-        createdAt: new Date().toISOString().split('T')[0],
+    try {
+      if (editing) {
+        const updated = await updateUser(editing.id, {
+          name: formName,
+          email: formEmail,
+          role: formRole,
+        })
+        setUsers(prev => prev.map(u => u.id === editing.id ? updated : u))
+      } else {
+        const created = await createUser({
+          name: formName,
+          email: formEmail,
+          password: formPassword.trim(),
+          role: formRole,
+        })
+        setUsers(prev => [created, ...prev])
       }
-      setUsers(prev => [newUser, ...prev])
+      setDialogOpen(false)
+      resetForm()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Error al guardar usuario')
     }
-    setDialogOpen(false)
-    resetForm()
   }
 
   function confirmDelete(user: User) {
@@ -197,23 +173,64 @@ export default function UsersPage() {
     setDeleteDialogOpen(true)
   }
 
-  function executeDelete() {
+  async function executeDelete() {
     if (!userToDelete) return
-    setUsers(prev => prev.filter(u => u.id !== userToDelete.id))
-    setDeleteDialogOpen(false)
-    setUserToDelete(null)
+    try {
+      await deleteUser(userToDelete.id)
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id))
+      setDeleteDialogOpen(false)
+      setUserToDelete(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar usuario')
+    }
   }
 
-  const copyPassword = useCallback(async (user: User) => {
-    if (!user.password) return
-    try {
-      await navigator.clipboard.writeText(user.password)
-      setCopiedId(user.id)
-      setTimeout(() => setCopiedId(null), 2000)
-    } catch {
-      // fallback silently
+  function confirmResetPassword(user: User) {
+    setUserToResetPassword(user)
+    setResetPasswordDialogOpen(true)
+    setNewPassword('')
+    setResetPasswordError('')
+    setResetPasswordSuccess(false)
+  }
+
+  async function executeResetPassword() {
+    if (!userToResetPassword) return
+    if (!newPassword.trim() || newPassword.length < 6) {
+      setResetPasswordError('La contrasena debe tener al menos 6 caracteres')
+      return
     }
-  }, [])
+    try {
+      await resetUserPassword(userToResetPassword.id, { newPassword: newPassword.trim() })
+      setResetPasswordSuccess(true)
+      setResetPasswordError('')
+    } catch (err) {
+      setResetPasswordError(err instanceof Error ? err.message : 'Error al resetear contrasena')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando usuarios...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <Button onClick={loadUsers} variant="outline">
+            Reintentar
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -237,7 +254,7 @@ export default function UsersPage() {
               <DialogTitle>{editing ? 'Editar usuario' : 'Crear usuario'}</DialogTitle>
               <DialogDescription>
                 {editing
-                  ? 'Modifica los datos del usuario. La contrasena es opcional.'
+                  ? 'Modifica los datos del usuario.'
                   : 'Completa los datos para crear un nuevo usuario.'}
               </DialogDescription>
             </DialogHeader>
@@ -352,7 +369,6 @@ export default function UsersPage() {
               <TableRow>
                 <TableHead className="w-[300px]">Usuario</TableHead>
                 <TableHead>Rol</TableHead>
-                <TableHead>Contrasena</TableHead>
                 <TableHead>Creado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -378,27 +394,6 @@ export default function UsersPage() {
                       {user.role}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <code className="rounded bg-muted px-2 py-0.5 text-xs font-mono">
-                        {showPasswordId === user.id ? (user.password ?? '') : '••••••••'}
-                      </code>
-                      <button
-                        onClick={() => setShowPasswordId(showPasswordId === user.id ? null : user.id)}
-                        className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                        title={showPasswordId === user.id ? 'Ocultar' : 'Mostrar'}
-                      >
-                        {showPasswordId === user.id ? <EyeOffIcon className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
-                      </button>
-                      <button
-                        onClick={() => copyPassword(user)}
-                        className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                        title="Copiar"
-                      >
-                        {copiedId === user.id ? <CheckIcon className="h-3.5 w-3.5 text-emerald-400" /> : <CopyIcon className="h-3.5 w-3.5" />}
-                      </button>
-                    </div>
-                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {user.createdAt}
                   </TableCell>
@@ -406,6 +401,9 @@ export default function UsersPage() {
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon-sm" onClick={() => openEdit(user)} title="Editar">
                         <PencilIcon className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon-sm" onClick={() => confirmResetPassword(user)} title="Resetear contrasena">
+                        <KeyIcon className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon-sm" onClick={() => confirmDelete(user)} className="text-destructive hover:text-destructive" title="Eliminar">
                         <TrashIcon className="h-4 w-4" />
@@ -416,7 +414,7 @@ export default function UsersPage() {
               ))}
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
                     {search ? 'No se encontraron usuarios con esa busqueda' : 'No hay usuarios registrados'}
                   </TableCell>
                 </TableRow>
@@ -445,6 +443,53 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reset password dialog */}
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Resetear contrasena</DialogTitle>
+            <DialogDescription>
+              Ingresa una nueva contrasena para <span className="font-medium text-foreground">{userToResetPassword?.name}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {resetPasswordSuccess ? (
+            <div className="rounded-lg bg-emerald-500/15 text-emerald-400 p-3 text-sm">
+              Contrasena actualizada exitosamente
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 py-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="new-password">Nueva contrasena</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Min. 6 caracteres"
+                />
+              </div>
+              {resetPasswordError && (
+                <p className="text-sm text-destructive">{resetPasswordError}</p>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter className="gap-2">
+            <DialogClose asChild>
+              <Button variant="ghost" onClick={() => setResetPasswordDialogOpen(false)}>
+                {resetPasswordSuccess ? 'Cerrar' : 'Cancelar'}
+              </Button>
+            </DialogClose>
+            {!resetPasswordSuccess && (
+              <Button onClick={executeResetPassword}>
+                Guardar nueva contrasena
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -467,36 +512,10 @@ function SearchIcon({ className }: { className?: string }) {
   )
 }
 
-function EyeIcon({ className }: { className?: string }) {
+function KeyIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-
-function EyeOffIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  )
-}
-
-function CopyIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  )
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20,6 9,17 4,12" />
+      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
     </svg>
   )
 }

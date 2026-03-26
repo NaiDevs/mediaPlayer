@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,61 +16,7 @@ import {
 } from '@/components/ui/table'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
-
-type Session = {
-  id: string
-  appId: string
-  user: string
-  startedAt: number
-  duration: string
-  durationMs: number
-  events: number
-  errors: number
-  status: 'completed' | 'live' | 'error'
-  device: 'desktop' | 'mobile' | 'tablet'
-  browser: string
-  country: string
-  pages: number
-}
-
-const SESSIONS: Session[] = [
-  {
-    id: 'sess-1', appId: 'yalo-pos', user: 'Juan Mendez',
-    startedAt: Date.now() - 3_600_000, duration: '12:47', durationMs: 767_000,
-    events: 342, errors: 2, status: 'completed', device: 'desktop',
-    browser: 'Chrome 121', country: 'MX', pages: 8,
-  },
-  {
-    id: 'sess-2', appId: 'bip-bip', user: 'Maria Garcia',
-    startedAt: Date.now() - 7_200_000, duration: '07:15', durationMs: 435_000,
-    events: 187, errors: 0, status: 'completed', device: 'mobile',
-    browser: 'Safari 17', country: 'CO', pages: 4,
-  },
-  {
-    id: 'sess-3', appId: 'patmed', user: 'Carlos Ruiz',
-    startedAt: Date.now() - 1_800_000, duration: '19:03', durationMs: 1_143_000,
-    events: 521, errors: 5, status: 'error', device: 'desktop',
-    browser: 'Firefox 122', country: 'AR', pages: 12,
-  },
-  {
-    id: 'sess-4', appId: 'dashboard', user: 'Ana Torres',
-    startedAt: Date.now() - 300_000, duration: '02:31', durationMs: 151_000,
-    events: 64, errors: 0, status: 'live', device: 'tablet',
-    browser: 'Chrome 121', country: 'MX', pages: 2,
-  },
-  {
-    id: 'sess-5', appId: 'yalo-pos', user: 'Roberto Diaz',
-    startedAt: Date.now() - 14_400_000, duration: '05:22', durationMs: 322_000,
-    events: 156, errors: 1, status: 'completed', device: 'mobile',
-    browser: 'Chrome 120', country: 'PE', pages: 6,
-  },
-  {
-    id: 'sess-6', appId: 'analytics', user: 'Laura Vega',
-    startedAt: Date.now() - 28_800_000, duration: '08:44', durationMs: 524_000,
-    events: 289, errors: 0, status: 'completed', device: 'desktop',
-    browser: 'Edge 121', country: 'CL', pages: 9,
-  },
-]
+import { fetchSessions, Session } from '@/lib/sessions'
 
 const statusConfig = {
   completed: { label: 'Completada', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
@@ -118,12 +64,32 @@ type FilterStatus = 'all' | Session['status']
 type SortBy = 'recent' | 'duration' | 'events' | 'errors'
 
 export default function SessionsPage() {
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [sortBy, setSortBy] = useState<SortBy>('recent')
 
+  useEffect(() => {
+    loadSessions()
+  }, [])
+
+  async function loadSessions() {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await fetchSessions()
+      setSessions(data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar sesiones')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filtered = useMemo(() => {
-    let result = SESSIONS.filter(s => {
+    const result = sessions.filter(s => {
       const q = search.toLowerCase()
       const matchesSearch = !q ||
         s.user.toLowerCase().includes(q) ||
@@ -134,21 +100,48 @@ export default function SessionsPage() {
       return matchesSearch && matchesStatus
     })
 
+    const sorted = [...result]
     switch (sortBy) {
-      case 'recent': result.sort((a, b) => b.startedAt - a.startedAt); break
-      case 'duration': result.sort((a, b) => b.durationMs - a.durationMs); break
-      case 'events': result.sort((a, b) => b.events - a.events); break
-      case 'errors': result.sort((a, b) => b.errors - a.errors); break
+      case 'recent': sorted.sort((a, b) => b.startedAt - a.startedAt); break
+      case 'duration': sorted.sort((a, b) => b.durationMs - a.durationMs); break
+      case 'events': sorted.sort((a, b) => b.events - a.events); break
+      case 'errors': sorted.sort((a, b) => b.errors - a.errors); break
     }
 
-    return result
-  }, [search, filterStatus, sortBy])
+    return sorted
+  }, [sessions, search, filterStatus, sortBy])
 
-  const totalEvents = SESSIONS.reduce((sum, s) => sum + s.events, 0)
-  const totalErrors = SESSIONS.reduce((sum, s) => sum + s.errors, 0)
-  const avgDuration = Math.round(SESSIONS.reduce((sum, s) => sum + s.durationMs, 0) / SESSIONS.length / 1000)
+  const totalEvents = sessions.reduce((sum, s) => sum + s.events, 0)
+  const totalErrors = sessions.reduce((sum, s) => sum + s.errors, 0)
+  const avgDuration = sessions.length > 0 
+    ? Math.round(sessions.reduce((sum, s) => sum + s.durationMs, 0) / sessions.length / 1000)
+    : 0
   const avgMin = Math.floor(avgDuration / 60)
   const avgSec = avgDuration % 60
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando sesiones...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <Button onClick={loadSessions} variant="outline">
+            Reintentar
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -165,7 +158,7 @@ export default function SessionsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total sesiones</CardDescription>
-            <CardTitle className="text-3xl">{SESSIONS.length}</CardTitle>
+            <CardTitle className="text-3xl">{sessions.length}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
