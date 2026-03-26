@@ -6,17 +6,65 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { login, forgotPassword } from '@/lib/auth'
 
 export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
+  const [forgotPasswordResult, setForgotPasswordResult] = useState<string | null>(null)
+  const [forgotPasswordError, setForgotPasswordError] = useState('')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulate a brief delay for UX
-    await new Promise(r => setTimeout(r, 400))
-    router.push('/sessions')
+    setError('')
+    
+    try {
+      const response = await login({ email, password })
+      
+      if (response.token) {
+        localStorage.setItem('authToken', response.token)
+        localStorage.setItem('user', JSON.stringify(response.user))
+      }
+      
+      router.push('/sessions')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al iniciar sesion')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault()
+    setForgotPasswordLoading(true)
+    setForgotPasswordError('')
+    setForgotPasswordResult(null)
+    
+    try {
+      const response = await forgotPassword({ email: forgotPasswordEmail })
+      setForgotPasswordResult(response.message || 'Revisa tu correo para restablecer tu contrasena')
+    } catch (err) {
+      setForgotPasswordError(err instanceof Error ? err.message : 'Error al enviar el correo')
+    } finally {
+      setForgotPasswordLoading(false)
+    }
   }
 
   return (
@@ -62,6 +110,8 @@ export default function LoginPage() {
                   placeholder="tu@empresa.com"
                   autoComplete="username"
                   required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                 />
               </div>
 
@@ -70,6 +120,12 @@ export default function LoginPage() {
                   <Label htmlFor="password">Contrasena</Label>
                   <button
                     type="button"
+                    onClick={() => {
+                      setForgotPasswordOpen(true)
+                      setForgotPasswordEmail(email)
+                      setForgotPasswordResult(null)
+                      setForgotPasswordError('')
+                    }}
                     className="text-xs text-muted-foreground transition-colors hover:text-primary"
                   >
                     Olvidaste tu contrasena?
@@ -81,8 +137,14 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
                 />
               </div>
+
+              {error && (
+                <p className="text-sm text-destructive">{error}</p>
+              )}
 
               <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
                 {isLoading ? (
@@ -106,6 +168,54 @@ export default function LoginPage() {
           SpectraView by CIT &middot; Session Recording Platform
         </p>
       </div>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Recuperar contrasena</DialogTitle>
+            <DialogDescription>
+              Ingresa tu correo electronico y te enviaremos instrucciones para restablecer tu contrasena.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {forgotPasswordResult ? (
+            <div className="rounded-lg bg-emerald-500/15 text-emerald-400 p-3 text-sm">
+              {forgotPasswordResult}
+            </div>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="flex flex-col gap-4 py-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="forgot-email">Correo electronico</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="tu@empresa.com"
+                  required
+                  value={forgotPasswordEmail}
+                  onChange={e => setForgotPasswordEmail(e.target.value)}
+                />
+              </div>
+              {forgotPasswordError && (
+                <p className="text-sm text-destructive">{forgotPasswordError}</p>
+              )}
+            </form>
+          )}
+          
+          <DialogFooter className="gap-2">
+            <DialogClose asChild>
+              <Button variant="ghost">
+                {forgotPasswordResult ? 'Cerrar' : 'Cancelar'}
+              </Button>
+            </DialogClose>
+            {!forgotPasswordResult && (
+              <Button onClick={handleForgotPassword} disabled={forgotPasswordLoading}>
+                {forgotPasswordLoading ? 'Enviando...' : 'Enviar instrucciones'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
